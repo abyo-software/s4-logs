@@ -221,6 +221,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-sdk-cloudwatch"
+version = "1.115.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8154ce513f492a85eee2eabf6fee7e8d21778a29312173ca5396d2b3cd950fe"
+dependencies = [
+ "arc-swap",
+ "aws-credential-types",
+ "aws-runtime",
+ "aws-smithy-async",
+ "aws-smithy-cbor",
+ "aws-smithy-compression",
+ "aws-smithy-http",
+ "aws-smithy-json",
+ "aws-smithy-observability",
+ "aws-smithy-runtime",
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "aws-types",
+ "fastrand",
+ "flate2",
+ "http 0.2.12",
+ "http 1.4.2",
+ "http-body 1.0.1",
+ "http-body-util",
+ "regex-lite",
+ "tracing",
+]
+
+[[package]]
 name = "aws-sdk-cloudwatchlogs"
 version = "1.135.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -397,6 +426,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-smithy-cbor"
+version = "0.61.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91f8768bf5156b97fc3111e7b63b528c1b022eb7edb20a5d0b77e7c2c1d5f24b"
+dependencies = [
+ "aws-smithy-runtime-api",
+ "aws-smithy-schema",
+ "aws-smithy-types",
+ "minicbor",
+]
+
+[[package]]
 name = "aws-smithy-checksums"
 version = "0.64.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -414,6 +455,24 @@ dependencies = [
  "pin-project-lite",
  "sha1 0.11.0",
  "sha2 0.11.0",
+ "tracing",
+]
+
+[[package]]
+name = "aws-smithy-compression"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e3cba0f1e060e0025523d3965f4967e668f9bbf7342c09427a1ad110437f4bb"
+dependencies = [
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "bytes",
+ "flate2",
+ "futures-util",
+ "http 1.4.2",
+ "http-body 1.0.1",
+ "http-body-util",
+ "pin-project-lite",
  "tracing",
 ]
 
@@ -2179,6 +2238,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
 
 [[package]]
+name = "minicbor"
+version = "2.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b7a5041e12946f8b7d3f5a9d96383a19d694b9335457c522be7815b9abafb02"
+dependencies = [
+ "half",
+]
+
+[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2807,10 +2875,11 @@ dependencies = [
 
 [[package]]
 name = "s4logs-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "aws-config",
+ "aws-sdk-cloudwatch",
  "aws-sdk-cloudwatchlogs",
  "aws-sdk-s3",
  "bytes",
@@ -2833,7 +2902,7 @@ dependencies = [
 
 [[package]]
 name = "s4logs-core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "aws-sdk-s3",
@@ -2857,7 +2926,7 @@ dependencies = [
 
 [[package]]
 name = "s4logs-drain"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "aws-sdk-cloudwatchlogs",
@@ -2872,11 +2941,12 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+ "zstd",
 ]
 
 [[package]]
 name = "s4logs-e2e"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "aws-config",
@@ -2896,7 +2966,7 @@ dependencies = [
 
 [[package]]
 name = "s4logs-gateway"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "aws-credential-types",

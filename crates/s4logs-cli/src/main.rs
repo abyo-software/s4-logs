@@ -28,6 +28,7 @@ async fn main() {
 
 async fn run(cli: Cli) -> anyhow::Result<()> {
     match cli.cmd {
+        Cmd::Plan(args) => commands::plan::run(&cli.global, &args).await,
         Cmd::Drain(args) => commands::drain::run(&cli.global, &args).await,
         Cmd::Grep(args) => commands::grep::run(&cli.global, &args).await,
         Cmd::Restore(args) => commands::restore::run(&cli.global, &args).await,

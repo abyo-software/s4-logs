@@ -38,7 +38,10 @@ pub mod cw;
 pub mod discover;
 pub mod job;
 pub mod manifest;
+pub mod progress;
+pub mod reconcile;
 pub mod retention;
+pub mod shard;
 pub mod window;
 
 #[cfg(test)]
@@ -55,5 +58,11 @@ pub use manifest::{
     MemoryManifestStore, ObjectStoreManifestStore, manifest_account_prefix,
     parse_manifest_key_log_group, parse_manifest_key_window,
 };
+pub use progress::{Progress, ProgressEvent};
+pub use reconcile::{
+    ChunkReadError, ChunkReader, ObjectStoreChunkReader, ReconcileError, ReconcileJob,
+    ReconcileReport, WindowAction, WindowReconcileOutcome,
+};
 pub use retention::{RetentionPlan, RetentionRequest, enforce_retention, plan_retention};
+pub use shard::{MAX_STREAMS_PER_FILTER, partition_streams};
 pub use window::{DAY_MS, HOUR_MS, Window, WindowError, windows, windows_covering};

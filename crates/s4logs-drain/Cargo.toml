@@ -26,6 +26,9 @@ serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+# Reconcile reads archived data objects back (legacy manifests without
+# `raw_bytes` can't use s4logs-core's size-checked `decompress_frames`).
+zstd.workspace = true
 
 [dev-dependencies]
 # HTTP-free SDK operation mocking for `AwsCwSource::list_log_groups`

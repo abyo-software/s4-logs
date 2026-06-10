@@ -4,9 +4,11 @@
 //! already exists (idempotency), page `FilterLogEvents` through a
 //! `ChunkWriter`, rotate to a new object when the uncompressed size reaches
 //! `chunk_target_bytes` (object names `{window_start_ms}-{seq:06}` —
-//! deterministic, so re-running a window overwrites identical content), then
-//! write the manifest. Empty windows still get a manifest (empty `objects`)
-//! so the retention gate can prove coverage.
+//! deterministic, so re-running a window overwrites identical content; with
+//! `shard_streams > 1` the names stay deterministic but the *content* byte
+//! order does not — see [`crate::shard`]), then write the manifest. Empty
+//! windows still get a manifest (empty `objects`) so the retention gate can
+//! prove coverage.
 //!
 //! `--dry-run` reads CW and *compresses* (for an honest savings estimate)
 //! but writes nothing — no chunks, no manifests.
@@ -24,6 +26,8 @@ use crate::cw::{CwError, CwSource};
 use crate::manifest::{
     DRAIN_VERSION, MANIFEST_VERSION, Manifest, ManifestError, ManifestObject, ManifestStore,
 };
+use crate::progress::{Progress, ProgressEvent};
+use crate::shard::{MAX_STREAMS_PER_FILTER, event_pages, partition_streams};
 use crate::window::{HOUR_MS, Window, WindowError, windows};
 
 #[derive(Debug, Error)]
@@ -70,6 +74,21 @@ pub struct DrainOptions {
     pub concurrency: usize,
     /// Read CW, count + compress, write nothing.
     pub dry_run: bool,
+    /// Parallel FilterLogEvents shards *within* one window, partitioned by
+    /// log stream (wave 4K; default 1 = the exact pre-4K single-token page
+    /// loop). When > 1 the group's streams are listed once per run and
+    /// round-robin-partitioned ([`crate::shard::partition_streams`]); total
+    /// in-flight FilterLogEvents pressure becomes
+    /// `concurrency × shard_streams`.
+    ///
+    /// HONESTY: with `shard_streams > 1` object **content** is no longer
+    /// byte-deterministic across runs (shard pages interleave in completion
+    /// order). The archived record *set* per window is identical and
+    /// manifest-skip idempotency is unaffected. See [`crate::shard`].
+    pub shard_streams: usize,
+    /// Progress hooks ([`crate::progress`]); `Progress::none()` = zero
+    /// overhead. Shared by drain and reconcile.
+    pub progress: Progress,
 }
 
 impl DrainOptions {
@@ -85,6 +104,8 @@ impl DrainOptions {
             chunk: ChunkConfig::default(),
             concurrency: 2,
             dry_run: false,
+            shard_streams: 1,
+            progress: Progress::none(),
         }
     }
 }
@@ -164,13 +185,13 @@ impl DrainReport {
 }
 
 #[derive(Debug, Default)]
-struct WindowOutcome {
-    skipped: bool,
-    records: u64,
-    dropped: u64,
-    raw_bytes: u64,
-    compressed_bytes: u64,
-    objects_written: u64,
+pub(crate) struct WindowOutcome {
+    pub(crate) skipped: bool,
+    pub(crate) records: u64,
+    pub(crate) dropped: u64,
+    pub(crate) raw_bytes: u64,
+    pub(crate) compressed_bytes: u64,
+    pub(crate) objects_written: u64,
 }
 
 pub(crate) fn now_ms() -> i64 {
@@ -180,12 +201,140 @@ pub(crate) fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
+/// Names a window's data objects. Base drain objects are
+/// `{window_start_ms}-{seq:06}` (6 digits, deterministic — DESIGN.md §7);
+/// reconcile-appended objects are `{window_start_ms}-r{attempt:02}{seq:04}`.
+/// The two schemes can never collide: a base suffix is exactly six ASCII
+/// digits, a reconcile suffix always starts with `r`. Each reconcile run
+/// that appends to a window uses the next free `attempt` (01–99, scanned
+/// from the manifest), so repeated reconciles never overwrite each other.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum ObjectNaming {
+    Base,
+    Reconcile { attempt: u32 },
+}
+
+impl ObjectNaming {
+    fn name(&self, window_start_ms: i64, seq: u32) -> String {
+        match self {
+            Self::Base => format!("{window_start_ms}-{seq:06}"),
+            Self::Reconcile { attempt } => format!("{window_start_ms}-r{attempt:02}{seq:04}"),
+        }
+    }
+}
+
+/// Per-window chunk pipeline shared by drain and reconcile: push records,
+/// rotate at `chunk_target_bytes`, PUT through the [`ChunkSink`] (unless
+/// dry-run), accumulate manifest entries + byte counters, emit
+/// `ObjectWritten` progress events.
+pub(crate) struct WindowWriter<'a> {
+    sink: &'a dyn ChunkSink,
+    opts: &'a DrainOptions,
+    window_start_ms: i64,
+    date: String,
+    naming: ObjectNaming,
+    writer: ChunkWriter,
+    seq: u32,
+    pub(crate) objects: Vec<ManifestObject>,
+    pub(crate) records: u64,
+    pub(crate) raw_bytes: u64,
+    pub(crate) compressed_bytes: u64,
+    pub(crate) objects_written: u64,
+}
+
+impl<'a> WindowWriter<'a> {
+    pub(crate) fn new(
+        sink: &'a dyn ChunkSink,
+        opts: &'a DrainOptions,
+        w: Window,
+        naming: ObjectNaming,
+    ) -> Self {
+        Self {
+            sink,
+            opts,
+            window_start_ms: w.start_ms,
+            // Windows never span UTC days, so the window start fixes the
+            // dt= partition for every event inside it.
+            date: date_from_ts_ms(w.start_ms),
+            naming,
+            writer: ChunkWriter::new(opts.chunk.clone()),
+            seq: 0,
+            objects: Vec::new(),
+            records: 0,
+            raw_bytes: 0,
+            compressed_bytes: 0,
+            objects_written: 0,
+        }
+    }
+
+    /// Uncompressed JSONL accepted so far (flushed + pending) — the
+    /// `bytes_so_far` of `Page` progress events.
+    pub(crate) fn bytes_so_far(&self) -> u64 {
+        self.raw_bytes + self.writer.uncompressed_len()
+    }
+
+    pub(crate) async fn push(&mut self, rec: &LogRecord) -> Result<(), DrainError> {
+        self.writer.push(rec)?;
+        if self.writer.uncompressed_len() >= self.opts.chunk_target_bytes {
+            let full =
+                std::mem::replace(&mut self.writer, ChunkWriter::new(self.opts.chunk.clone()));
+            self.flush(full).await?;
+        }
+        Ok(())
+    }
+
+    /// Flush the pending partial chunk. Call exactly once, after the last
+    /// `push`.
+    pub(crate) async fn finish(&mut self) -> Result<(), DrainError> {
+        let last = std::mem::replace(&mut self.writer, ChunkWriter::new(self.opts.chunk.clone()));
+        self.flush(last).await
+    }
+
+    /// Finalize one chunk: count it, and unless dry-run, PUT it and record
+    /// its manifest entry. No-op for an empty writer.
+    async fn flush(&mut self, writer: ChunkWriter) -> Result<(), DrainError> {
+        let Some(chunk) = writer.finish()? else {
+            return Ok(());
+        };
+        self.records += chunk.record_count;
+        self.raw_bytes += chunk.uncompressed_bytes;
+        self.compressed_bytes += chunk.body.len() as u64;
+        if !self.opts.dry_run {
+            let loc = ChunkLocation {
+                account: self.opts.account.clone(),
+                log_group: self.opts.log_group.clone(),
+                date: self.date.clone(),
+                name: self.naming.name(self.window_start_ms, self.seq),
+            };
+            let receipt = self.sink.put_chunk(&loc, &chunk).await?;
+            self.opts.progress.emit(|| ProgressEvent::ObjectWritten {
+                key: receipt.data_key.clone(),
+                raw_bytes: chunk.uncompressed_bytes,
+                compressed_bytes: receipt.body_len,
+            });
+            self.objects.push(ManifestObject {
+                data_key: receipt.data_key,
+                etag: receipt.etag,
+                crc32c: receipt.crc32c,
+                body_len: receipt.body_len,
+                raw_bytes: Some(chunk.uncompressed_bytes),
+                record_count: chunk.record_count,
+                min_ts: chunk.min_timestamp,
+                max_ts: chunk.max_timestamp,
+            });
+            self.objects_written += 1;
+        }
+        self.seq += 1;
+        Ok(())
+    }
+}
+
 /// Mode A drain for one log group.
 pub struct DrainJob {
-    cw: Arc<dyn CwSource>,
-    sink: Arc<dyn ChunkSink>,
-    manifests: Arc<dyn ManifestStore>,
-    opts: DrainOptions,
+    pub(crate) cw: Arc<dyn CwSource>,
+    pub(crate) sink: Arc<dyn ChunkSink>,
+    pub(crate) manifests: Arc<dyn ManifestStore>,
+    pub(crate) opts: DrainOptions,
 }
 
 impl DrainJob {
@@ -207,10 +356,9 @@ impl DrainJob {
         &self.opts
     }
 
-    /// Run the drain. Fails fast on the first window error (windows already
-    /// completed keep their manifests, so a re-run resumes where it left
-    /// off — that is the idempotency story, not partial-failure bookkeeping).
-    pub async fn run(&self) -> Result<DrainReport, DrainError> {
+    /// Resolve the effective `[from, to)` drain range (creation time / now
+    /// cutoff defaults). Shared with [`crate::reconcile::ReconcileJob`].
+    pub(crate) async fn resolve_range(&self) -> Result<(i64, i64), DrainError> {
         if self.opts.chunk_target_bytes == 0 {
             return Err(DrainError::BadOptions(
                 "chunk_target_bytes must be > 0".into(),
@@ -229,6 +377,38 @@ impl DrainJob {
             Some(t) => t,
             None => now_ms().saturating_sub(self.opts.now_cutoff_ms),
         };
+        Ok((from, to))
+    }
+
+    /// Stream shards for this run: `None` (page unsharded — the default and
+    /// the < 2-shard degenerate cases) or ≥ 2 round-robin stream shards.
+    /// Lists the group's streams once; see [`crate::shard`].
+    pub(crate) async fn compute_shards(&self) -> Result<Option<Vec<Vec<String>>>, DrainError> {
+        if self.opts.shard_streams <= 1 {
+            return Ok(None);
+        }
+        let names = self.cw.list_log_streams(&self.opts.log_group, None).await?;
+        let shards = partition_streams(&names, self.opts.shard_streams, MAX_STREAMS_PER_FILTER);
+        if shards.len() < 2 {
+            // 0 or 1 streams: a stream-name filter would only change the
+            // call shape, not the result — keep the exact default behavior.
+            return Ok(None);
+        }
+        tracing::info!(
+            log_group = %self.opts.log_group,
+            streams = shards.iter().map(Vec::len).sum::<usize>(),
+            shards = shards.len(),
+            "stream-sharded paging enabled"
+        );
+        Ok(Some(shards))
+    }
+
+    /// Run the drain. Fails fast on the first window error (windows already
+    /// completed keep their manifests, so a re-run resumes where it left
+    /// off — that is the idempotency story, not partial-failure bookkeeping).
+    pub async fn run(&self) -> Result<DrainReport, DrainError> {
+        let (from, to) = self.resolve_range().await?;
+        let shards = self.compute_shards().await?;
         let wins = windows(from, to, self.opts.window_ms)?;
         let mut report = DrainReport {
             log_group: self.opts.log_group.clone(),
@@ -244,15 +424,24 @@ impl DrainJob {
             dry_run = self.opts.dry_run,
             "drain starting"
         );
-        let mut stream = futures::stream::iter(wins.into_iter().map(|w| self.process_window(w)))
-            .buffer_unordered(self.opts.concurrency.max(1));
+        let mut stream = futures::stream::iter(
+            wins.into_iter()
+                .map(|w| self.process_window(w, shards.as_deref())),
+        )
+        .buffer_unordered(self.opts.concurrency.max(1));
         while let Some(res) = stream.next().await {
             report.absorb(res?);
         }
         Ok(report)
     }
 
-    async fn process_window(&self, w: Window) -> Result<WindowOutcome, DrainError> {
+    /// Drain one window (manifest-skip, page → chunk → PUT → manifest).
+    /// `shards` comes from [`Self::compute_shards`]; `None` = unsharded.
+    pub(crate) async fn process_window(
+        &self,
+        w: Window,
+        shards: Option<&[Vec<String>]>,
+    ) -> Result<WindowOutcome, DrainError> {
         let opts = &self.opts;
         let mkey = manifest_key(
             self.sink.key_prefix(),
@@ -263,57 +452,56 @@ impl DrainJob {
         );
         if self.manifests.exists(&mkey).await? {
             tracing::debug!(log_group = %opts.log_group, window_start_ms = w.start_ms, "manifest exists; skipping window");
+            opts.progress
+                .emit(|| ProgressEvent::WindowSkipped { window: w });
             return Ok(WindowOutcome {
                 skipped: true,
                 ..WindowOutcome::default()
             });
         }
+        opts.progress
+            .emit(|| ProgressEvent::WindowStarted { window: w });
 
-        // Windows never span UTC days, so the window start fixes the dt=
-        // partition for every event inside it.
-        let date = date_from_ts_ms(w.start_ms);
         let mut out = WindowOutcome::default();
-        let mut objects: Vec<ManifestObject> = Vec::new();
-        let mut seq: u32 = 0;
-        let mut writer = ChunkWriter::new(opts.chunk.clone());
-        let mut token: Option<String> = None;
-        loop {
-            let page = self
-                .cw
-                .filter_log_events(&opts.log_group, w.start_ms, w.end_ms, token.as_deref())
-                .await?;
-            for ev in page.events {
-                if ev.timestamp < w.start_ms || ev.timestamp >= w.end_ms {
-                    tracing::warn!(
-                        log_group = %opts.log_group,
-                        timestamp = ev.timestamp,
-                        window_start_ms = w.start_ms,
-                        window_end_ms = w.end_ms,
-                        "event outside requested window; dropping (would corrupt dt= partition)"
-                    );
-                    out.dropped += 1;
-                    continue;
+        let mut ww = WindowWriter::new(&*self.sink, opts, w, ObjectNaming::Base);
+        {
+            let mut pages = event_pages(&*self.cw, &opts.log_group, w, shards);
+            while let Some(page) = pages.next().await {
+                let events = page?;
+                let page_len = events.len() as u64;
+                for ev in events {
+                    if ev.timestamp < w.start_ms || ev.timestamp >= w.end_ms {
+                        tracing::warn!(
+                            log_group = %opts.log_group,
+                            timestamp = ev.timestamp,
+                            window_start_ms = w.start_ms,
+                            window_end_ms = w.end_ms,
+                            "event outside requested window; dropping (would corrupt dt= partition)"
+                        );
+                        out.dropped += 1;
+                        continue;
+                    }
+                    ww.push(&LogRecord {
+                        timestamp: ev.timestamp,
+                        stream: ev.log_stream_name,
+                        message: ev.message,
+                        ingestion_time: ev.ingestion_time,
+                        event_id: ev.event_id,
+                    })
+                    .await?;
                 }
-                writer.push(&LogRecord {
-                    timestamp: ev.timestamp,
-                    stream: ev.log_stream_name,
-                    message: ev.message,
-                    ingestion_time: ev.ingestion_time,
-                    event_id: ev.event_id,
-                })?;
-                if writer.uncompressed_len() >= opts.chunk_target_bytes {
-                    let full = std::mem::replace(&mut writer, ChunkWriter::new(opts.chunk.clone()));
-                    self.flush_chunk(full, &date, w.start_ms, &mut seq, &mut objects, &mut out)
-                        .await?;
-                }
-            }
-            token = page.next_token;
-            if token.is_none() {
-                break;
+                opts.progress.emit(|| ProgressEvent::Page {
+                    window: w,
+                    events: page_len,
+                    bytes_so_far: ww.bytes_so_far(),
+                });
             }
         }
-        self.flush_chunk(writer, &date, w.start_ms, &mut seq, &mut objects, &mut out)
-            .await?;
+        ww.finish().await?;
+        out.records = ww.records;
+        out.raw_bytes = ww.raw_bytes;
+        out.compressed_bytes = ww.compressed_bytes;
+        out.objects_written = ww.objects_written;
 
         if !opts.dry_run {
             let manifest = Manifest {
@@ -322,55 +510,20 @@ impl DrainJob {
                 log_group: opts.log_group.clone(),
                 window_start_ms: w.start_ms,
                 window_end_ms: w.end_ms,
-                record_count: objects.iter().map(|o| o.record_count).sum(),
-                objects,
+                record_count: ww.objects.iter().map(|o| o.record_count).sum(),
+                objects: ww.objects,
                 completed_at_ms: now_ms(),
                 drain_version: DRAIN_VERSION.to_owned(),
+                reconciled_at_ms: None,
+                reconciled_added: None,
             };
             self.manifests.put(&mkey, manifest.to_json_bytes()?).await?;
         }
+        opts.progress.emit(|| ProgressEvent::WindowDone {
+            window: w,
+            records: out.records,
+        });
         Ok(out)
-    }
-
-    /// Finalize one chunk: count it, and unless dry-run, PUT it and record
-    /// its manifest entry. No-op for an empty writer.
-    async fn flush_chunk(
-        &self,
-        writer: ChunkWriter,
-        date: &str,
-        window_start_ms: i64,
-        seq: &mut u32,
-        objects: &mut Vec<ManifestObject>,
-        out: &mut WindowOutcome,
-    ) -> Result<(), DrainError> {
-        let Some(chunk) = writer.finish()? else {
-            return Ok(());
-        };
-        out.records += chunk.record_count;
-        out.raw_bytes += chunk.uncompressed_bytes;
-        out.compressed_bytes += chunk.body.len() as u64;
-        if !self.opts.dry_run {
-            let loc = ChunkLocation {
-                account: self.opts.account.clone(),
-                log_group: self.opts.log_group.clone(),
-                date: date.to_owned(),
-                name: format!("{window_start_ms}-{seq:06}"),
-            };
-            let receipt = self.sink.put_chunk(&loc, &chunk).await?;
-            objects.push(ManifestObject {
-                data_key: receipt.data_key,
-                etag: receipt.etag,
-                crc32c: receipt.crc32c,
-                body_len: receipt.body_len,
-                raw_bytes: Some(chunk.uncompressed_bytes),
-                record_count: chunk.record_count,
-                min_ts: chunk.min_timestamp,
-                max_ts: chunk.max_timestamp,
-            });
-            out.objects_written += 1;
-        }
-        *seq += 1;
-        Ok(())
     }
 }
 
@@ -881,6 +1034,213 @@ mod tests {
         assert!(!multi.any_failed());
         let report = &multi.groups[0].result.as_ref().unwrap();
         assert_eq!(report.windows_total, 2);
+    }
+
+    // -- stream-shard parallel paging (wave 4K) ------------------------------
+
+    /// Decode every data object in the sink into a sorted record list.
+    fn archived_records(sink: &MemorySink) -> Vec<(i64, String, String)> {
+        let mut out = Vec::new();
+        for key in sink.keys() {
+            if !key.ends_with(".jsonl.zst") {
+                continue;
+            }
+            let raw = zstd::stream::decode_all(&sink.get(&key).unwrap()[..]).unwrap();
+            for rec in s4logs_core::read::RecordLines::new(&raw) {
+                let r = rec.unwrap();
+                out.push((r.timestamp, r.stream, r.message));
+            }
+        }
+        out.sort();
+        out
+    }
+
+    fn multi_stream_events() -> Vec<crate::cw::CwEvent> {
+        let mut events = Vec::new();
+        for s in 0..7 {
+            for i in 0..20i64 {
+                events.push(crate::testutil::event_in_stream(
+                    DAY0 + (s as i64) * 60_000 + i * 1000,
+                    &format!("app/stream-{s}"),
+                    &format!("padded line s{s} i{i:03} {}", "z".repeat(30)),
+                ));
+            }
+        }
+        events
+    }
+
+    #[tokio::test]
+    async fn sharded_drain_archives_the_same_record_set_as_unsharded() {
+        let events = multi_stream_events();
+
+        let mut o1 = opts(DAY0, DAY0 + HOUR_MS);
+        o1.chunk_target_bytes = 2_000; // several rotations
+        let (job1, sink1, _m1) = job(
+            MockCw {
+                events: events.clone(),
+                page_size: 7,
+                ..MockCw::default()
+            },
+            o1.clone(),
+        );
+        let r1 = job1.run().await.unwrap();
+
+        let mut o3 = o1;
+        o3.shard_streams = 3;
+        let cw = Arc::new(MockCw {
+            events,
+            page_size: 7,
+            ..MockCw::default()
+        });
+        let sink3 = Arc::new(MemorySink::new("s4logs"));
+        let manifests3 = Arc::new(MemoryManifestStore::new());
+        let job3 = DrainJob::new(cw.clone(), sink3.clone(), manifests3.clone(), o3);
+        let r3 = job3.run().await.unwrap();
+
+        assert_eq!(r1.records, 140);
+        assert_eq!(r3.records, 140);
+        assert_eq!(r1.raw_bytes, r3.raw_bytes, "same JSONL bytes either way");
+        assert_eq!(
+            archived_records(&sink1),
+            archived_records(&sink3),
+            "sharded run must archive exactly the same record set"
+        );
+        // Streams listed exactly once for the whole run (not per window).
+        assert_eq!(
+            cw.list_stream_calls.lock().unwrap().len(),
+            1,
+            "list_log_streams must be called once per run"
+        );
+        // Manifest record accounting is intact.
+        let mkey = manifest_key("s4logs", ACCT, GROUP, DAY0, DAY0 + HOUR_MS);
+        let m = Manifest::from_json_bytes(&manifests3.get(&mkey).await.unwrap().unwrap()).unwrap();
+        assert_eq!(m.record_count, 140);
+    }
+
+    #[tokio::test]
+    async fn shard_streams_one_or_single_stream_keeps_default_call_shape() {
+        // shard_streams = 1 must not even list streams; > 1 with a single
+        // stream must fall back to the unsharded pass.
+        let mut o = opts(DAY0, DAY0 + HOUR_MS);
+        o.shard_streams = 1;
+        let cw = Arc::new(MockCw {
+            events: vec![crate::testutil::event(DAY0 + 1, "only")],
+            ..MockCw::default()
+        });
+        let sink = Arc::new(MemorySink::new("s4logs"));
+        let manifests = Arc::new(MemoryManifestStore::new());
+        DrainJob::new(cw.clone(), sink, manifests, o.clone())
+            .run()
+            .await
+            .unwrap();
+        assert!(cw.list_stream_calls.lock().unwrap().is_empty());
+
+        o.shard_streams = 4; // one stream only → must degrade to unsharded
+        let cw2 = Arc::new(MockCw {
+            events: vec![crate::testutil::event(DAY0 + 1, "only")],
+            ..MockCw::default()
+        });
+        let sink2 = Arc::new(MemorySink::new("s4logs"));
+        let manifests2 = Arc::new(MemoryManifestStore::new());
+        let report = DrainJob::new(cw2.clone(), sink2, manifests2, o)
+            .run()
+            .await
+            .unwrap();
+        assert_eq!(report.records, 1);
+        assert_eq!(cw2.list_stream_calls.lock().unwrap().len(), 1);
+    }
+
+    // -- progress hooks (wave 4K) --------------------------------------------
+
+    #[tokio::test]
+    async fn progress_events_arrive_in_order_for_a_scripted_run() {
+        use crate::progress::{Progress, ProgressEvent};
+        use std::sync::Mutex;
+
+        let seen: Arc<Mutex<Vec<ProgressEvent>>> = Arc::new(Mutex::new(Vec::new()));
+        let tap = seen.clone();
+        let mut cw = MockCw {
+            page_size: 5,
+            ..MockCw::default()
+        };
+        for i in 0..7i64 {
+            cw.events.push(crate::testutil::event(
+                DAY0 + i * 1000,
+                &format!("line {i}"),
+            ));
+        }
+        let mut o = opts(DAY0, DAY0 + HOUR_MS);
+        o.concurrency = 1;
+        o.progress = Progress::callback(move |ev| tap.lock().unwrap().push(ev));
+        let (job, _sink, _manifests) = job(cw, o);
+        job.run().await.unwrap();
+
+        let w = Window {
+            start_ms: DAY0,
+            end_ms: DAY0 + HOUR_MS,
+        };
+        let got = seen.lock().unwrap().clone();
+        // 7 events, page size 5 → 2 pages; one object flushed at finish.
+        assert_eq!(got.len(), 5, "got {got:?}");
+        assert_eq!(got[0], ProgressEvent::WindowStarted { window: w });
+        assert!(
+            matches!(got[1], ProgressEvent::Page { window, events: 5, .. } if window == w),
+            "got {:?}",
+            got[1]
+        );
+        assert!(
+            matches!(got[2], ProgressEvent::Page { window, events: 2, bytes_so_far } if window == w && bytes_so_far > 0),
+            "got {:?}",
+            got[2]
+        );
+        assert!(
+            matches!(
+                &got[3],
+                ProgressEvent::ObjectWritten { key, raw_bytes, compressed_bytes }
+                    if key.ends_with(&format!("{DAY0}-000000.jsonl.zst"))
+                        && *raw_bytes > 0
+                        && *compressed_bytes > 0
+            ),
+            "got {:?}",
+            got[3]
+        );
+        assert_eq!(
+            got[4],
+            ProgressEvent::WindowDone {
+                window: w,
+                records: 7
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn progress_reports_skipped_windows() {
+        use crate::progress::{Progress, ProgressEvent};
+        use std::sync::Mutex;
+
+        let seen: Arc<Mutex<Vec<ProgressEvent>>> = Arc::new(Mutex::new(Vec::new()));
+        let tap = seen.clone();
+        let mut o = opts(DAY0, DAY0 + HOUR_MS);
+        o.progress = Progress::callback(move |ev| tap.lock().unwrap().push(ev));
+        let (job, _sink, manifests) = job(MockCw::default(), o);
+        manifests
+            .put(
+                &manifest_key("s4logs", ACCT, GROUP, DAY0, DAY0 + HOUR_MS),
+                Bytes::from_static(b"{}"),
+            )
+            .await
+            .unwrap();
+        job.run().await.unwrap();
+        let got = seen.lock().unwrap().clone();
+        assert_eq!(
+            got,
+            vec![ProgressEvent::WindowSkipped {
+                window: Window {
+                    start_ms: DAY0,
+                    end_ms: DAY0 + HOUR_MS
+                }
+            }]
+        );
     }
 
     #[test]

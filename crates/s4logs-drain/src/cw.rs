@@ -77,15 +77,34 @@ pub trait CwSource: Send + Sync {
     /// One page of events with `start_ms <= timestamp < end_ms_exclusive`,
     /// interleaved across streams. Pass the previous page's `next_token` to
     /// continue; `None` starts from the beginning of the range.
+    ///
+    /// `streams`, when `Some`, narrows the call to those `logStreamNames`
+    /// (FilterLogEvents accepts at most
+    /// [`crate::shard::MAX_STREAMS_PER_FILTER`] names — callers shard via
+    /// [`crate::shard::partition_streams`]). `None` = all streams, the
+    /// pre-wave-4K behavior. Continuation tokens are only valid with the
+    /// same `streams` value they were issued for.
     async fn filter_log_events(
         &self,
         log_group: &str,
         start_ms: i64,
         end_ms_exclusive: i64,
         next_token: Option<&str>,
+        streams: Option<&[String]>,
     ) -> Result<CwEventPage, CwError>;
 
     async fn describe_log_group(&self, log_group: &str) -> Result<LogGroupInfo, CwError>;
+
+    /// Every log stream name in `log_group` (paginated `DescribeLogStreams`
+    /// to exhaustion), optionally narrowed server-side by a name prefix.
+    /// Used once per group to build stream shards (`--shard-streams`).
+    /// Streams created *after* this listing are still drained: shard
+    /// filtering applies per window, and a re-list happens on the next run.
+    async fn list_log_streams(
+        &self,
+        log_group: &str,
+        prefix_hint: Option<&str>,
+    ) -> Result<Vec<String>, CwError>;
 
     /// Every log group in the account (DESIGN.md §11.4), optionally narrowed
     /// server-side by a name prefix, paginated to exhaustion. Listing entries
@@ -256,6 +275,7 @@ impl CwSource for AwsCwSource {
         start_ms: i64,
         end_ms_exclusive: i64,
         next_token: Option<&str>,
+        streams: Option<&[String]>,
     ) -> Result<CwEventPage, CwError> {
         let out = with_backoff(&self.backoff, "FilterLogEvents", log_group, || {
             let req = self
@@ -264,6 +284,7 @@ impl CwSource for AwsCwSource {
                 .log_group_name(log_group)
                 .start_time(start_ms)
                 .end_time(end_ms_exclusive.saturating_sub(1))
+                .set_log_stream_names(streams.map(<[String]>::to_vec))
                 .set_next_token(next_token.map(str::to_owned));
             async move { req.send().await.map_err(classify) }
         })
@@ -329,6 +350,45 @@ impl CwSource for AwsCwSource {
                 });
             }
         }
+    }
+
+    async fn list_log_streams(
+        &self,
+        log_group: &str,
+        prefix_hint: Option<&str>,
+    ) -> Result<Vec<String>, CwError> {
+        let mut out = Vec::new();
+        let mut token: Option<String> = None;
+        loop {
+            let tok = token.clone();
+            let resp = with_backoff(&self.backoff, "DescribeLogStreams", log_group, || {
+                let req = self
+                    .client
+                    .describe_log_streams()
+                    .log_group_name(log_group)
+                    // Prefix filtering requires the (default) LogStreamName
+                    // ordering — do not add `order_by` here.
+                    .set_log_stream_name_prefix(prefix_hint.map(str::to_owned))
+                    .set_next_token(tok.clone());
+                async move { req.send().await.map_err(classify) }
+            })
+            .await?;
+            for ls in resp.log_streams.unwrap_or_default() {
+                let Some(name) = ls.log_stream_name else {
+                    tracing::warn!(
+                        log_group,
+                        "DescribeLogStreams returned a stream without a name; skipping"
+                    );
+                    continue;
+                };
+                out.push(name);
+            }
+            token = resp.next_token;
+            if token.is_none() {
+                break;
+            }
+        }
+        Ok(out)
     }
 
     async fn list_log_groups(
@@ -527,6 +587,95 @@ mod tests {
         );
         assert_eq!(page1.num_calls(), 1);
         assert_eq!(page2.num_calls(), 1);
+    }
+
+    #[tokio::test]
+    async fn list_log_streams_paginates_and_skips_nameless_entries() {
+        use aws_sdk_cloudwatchlogs::operation::describe_log_streams::DescribeLogStreamsOutput;
+        use aws_sdk_cloudwatchlogs::types::LogStream;
+        use aws_smithy_mocks::{RuleMode, mock, mock_client};
+
+        let page1 = mock!(aws_sdk_cloudwatchlogs::Client::describe_log_streams)
+            .match_requests(|inp| {
+                inp.log_group_name() == Some("/g")
+                    && inp.log_stream_name_prefix() == Some("app-")
+                    && inp.next_token().is_none()
+            })
+            .then_output(|| {
+                DescribeLogStreamsOutput::builder()
+                    .log_streams(LogStream::builder().log_stream_name("app-1").build())
+                    // Nameless entry — skipped, not fatal.
+                    .log_streams(LogStream::builder().build())
+                    .next_token("tok-1")
+                    .build()
+            });
+        let page2 = mock!(aws_sdk_cloudwatchlogs::Client::describe_log_streams)
+            .match_requests(|inp| inp.next_token() == Some("tok-1"))
+            .then_output(|| {
+                DescribeLogStreamsOutput::builder()
+                    .log_streams(LogStream::builder().log_stream_name("app-2").build())
+                    .build()
+            });
+        let client = mock_client!(
+            aws_sdk_cloudwatchlogs,
+            RuleMode::Sequential,
+            [&page1, &page2]
+        );
+        let src = AwsCwSource::new(client);
+        let streams = src.list_log_streams("/g", Some("app-")).await.unwrap();
+        assert_eq!(streams, vec!["app-1", "app-2"]);
+        assert_eq!(page1.num_calls(), 1);
+        assert_eq!(page2.num_calls(), 1);
+    }
+
+    #[tokio::test]
+    async fn filter_log_events_passes_stream_names_and_inclusive_end() {
+        use aws_sdk_cloudwatchlogs::operation::filter_log_events::FilterLogEventsOutput;
+        use aws_sdk_cloudwatchlogs::types::FilteredLogEvent;
+        use aws_smithy_mocks::{RuleMode, mock, mock_client};
+
+        let sharded = mock!(aws_sdk_cloudwatchlogs::Client::filter_log_events)
+            .match_requests(|inp| {
+                inp.log_group_name() == Some("/g")
+                    && inp.start_time() == Some(1000)
+                    // end_ms_exclusive 2000 → SDK inclusive endTime 1999
+                    && inp.end_time() == Some(1999)
+                    && inp.log_stream_names() == ["s-a".to_owned(), "s-b".to_owned()]
+            })
+            .then_output(|| {
+                FilterLogEventsOutput::builder()
+                    .events(
+                        FilteredLogEvent::builder()
+                            .timestamp(1500)
+                            .message("m")
+                            .log_stream_name("s-a")
+                            .event_id("e1")
+                            .build(),
+                    )
+                    .build()
+            });
+        let unsharded = mock!(aws_sdk_cloudwatchlogs::Client::filter_log_events)
+            .match_requests(|inp| inp.log_stream_names().is_empty())
+            .then_output(|| FilterLogEventsOutput::builder().build());
+        let client = mock_client!(
+            aws_sdk_cloudwatchlogs,
+            RuleMode::MatchAny,
+            [&sharded, &unsharded]
+        );
+        let src = AwsCwSource::new(client);
+        let names = vec!["s-a".to_owned(), "s-b".to_owned()];
+        let page = src
+            .filter_log_events("/g", 1000, 2000, None, Some(&names))
+            .await
+            .unwrap();
+        assert_eq!(page.events.len(), 1);
+        assert_eq!(page.events[0].event_id.as_deref(), Some("e1"));
+        // streams = None must not set logStreamNames at all.
+        src.filter_log_events("/g", 1000, 2000, None, None)
+            .await
+            .unwrap();
+        assert_eq!(sharded.num_calls(), 1);
+        assert_eq!(unsharded.num_calls(), 1);
     }
 
     #[test]

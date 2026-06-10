@@ -106,6 +106,11 @@ pub enum GrepOutput {
 
 #[derive(Debug, Subcommand)]
 pub enum Cmd {
+    /// Read-only account diagnostic: per-log-group CloudWatch cost today and
+    /// projected Mode A / Mode B savings. Uses DescribeLogGroups +
+    /// GetMetricData only — no writes, no bucket needed, read-only
+    /// credentials suffice
+    Plan(PlanArgs),
     /// Archive CloudWatch log groups into S3 (Mode A), optionally gating a
     /// retention shortening behind manifest coverage
     Drain(DrainArgs),
@@ -123,6 +128,39 @@ pub enum Cmd {
     Serve(ServeArgs),
     /// Print the version
     Version,
+}
+
+/// `s4logs plan` needs **no bucket and no account id** — it never touches
+/// S3. It reads `DescribeLogGroups` (storedBytes = CloudWatch's storage
+/// billing basis) and CloudWatch Metrics `GetMetricData`
+/// (`AWS/Logs IncomingBytes` per group) and prints cost + savings
+/// projections. `GlobalArgs::require_bucket` / `require_account` are never
+/// called on this path.
+#[derive(Debug, Args)]
+#[command(group = clap::ArgGroup::new("groups").required(true).multiple(false))]
+pub struct PlanArgs {
+    /// Log group to diagnose — exact name or glob (globset syntax, e.g.
+    /// "/aws/lambda/*"; same semantics as drain/report)
+    #[arg(long, group = "groups")]
+    pub log_group: Option<String>,
+
+    /// Diagnose every log group in the account
+    #[arg(long, group = "groups")]
+    pub all: bool,
+
+    /// Output format
+    #[arg(long, value_enum, default_value_t = ReportOutput::Table)]
+    pub output: ReportOutput,
+
+    /// Days of IncomingBytes history sampled to project monthly ingest
+    /// (CloudWatch retains 1-day datapoints for 455 days)
+    #[arg(long, default_value_t = 30, value_parser = clap::value_parser!(u32).range(1..=455))]
+    pub ingest_days: u32,
+
+    /// Table rows shown (highest current cost first); totals always cover
+    /// every group, and --output json always lists all groups
+    #[arg(long, default_value_t = 20)]
+    pub top: usize,
 }
 
 #[derive(Debug, Args)]
@@ -180,6 +218,47 @@ pub struct DrainArgs {
     // ArgGroup (cf. the `RestoreArgs::raw` caveat).
     #[arg(long, requires = "retention_days")]
     pub apply_retention: bool,
+
+    /// S3 storage class for archive data objects (sidecars and manifests
+    /// always stay Standard — see README Cost model)
+    #[arg(long, value_enum)]
+    pub storage_class: Option<StorageClassArg>,
+
+    /// Page each window's streams in N parallel shards (FilterLogEvents
+    /// logStreamNames). >1 trades object-content determinism for speed;
+    /// manifest idempotency is unaffected
+    #[arg(long, default_value_t = 1)]
+    pub shard_streams: usize,
+
+    /// Repair mode: re-page manifested windows too, dedup against the
+    /// archive by event identity, append only what is missing
+    /// (late-arrival recovery — see README Limitations)
+    #[arg(long)]
+    pub reconcile: bool,
+
+    /// Periodic progress lines on stderr (windows, pages, objects)
+    #[arg(long)]
+    pub progress: bool,
+}
+
+/// CLI face of `aws_sdk_s3::types::StorageClass` (only classes that make
+/// sense for log archives; Glacier Deep Archive has minutes-to-hours
+/// retrieval, which would break grep's interactive contract).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum StorageClassArg {
+    Standard,
+    StandardIa,
+    GlacierIr,
+}
+
+impl StorageClassArg {
+    pub fn to_sdk(self) -> aws_sdk_s3::types::StorageClass {
+        match self {
+            StorageClassArg::Standard => aws_sdk_s3::types::StorageClass::Standard,
+            StorageClassArg::StandardIa => aws_sdk_s3::types::StorageClass::StandardIa,
+            StorageClassArg::GlacierIr => aws_sdk_s3::types::StorageClass::GlacierIr,
+        }
+    }
 }
 
 #[derive(Debug, Args)]
@@ -318,6 +397,10 @@ pub struct ServeArgs {
     /// Total uncompressed buffer cap before backpressure (503) kicks in
     #[arg(long, default_value = "256MiB", value_parser = timearg::parse_size_bytes)]
     pub max_buffered_bytes: u64,
+
+    /// S3 storage class for archive data objects (sidecars stay Standard)
+    #[arg(long, value_enum)]
+    pub storage_class: Option<StorageClassArg>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -446,6 +529,57 @@ mod tests {
             }
             other => panic!("expected drain, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn plan_requires_exactly_one_of_log_group_or_all() {
+        assert!(Cli::try_parse_from(["s4logs", "plan"]).is_err());
+        assert!(Cli::try_parse_from(["s4logs", "plan", "--log-group", "/g", "--all"]).is_err());
+        let cli = Cli::try_parse_from(["s4logs", "plan", "--all"]).unwrap();
+        match cli.cmd {
+            Cmd::Plan(p) => {
+                assert!(p.all);
+                assert_eq!(p.ingest_days, 30, "30-day ingest sample by default");
+                assert_eq!(p.top, 20, "top 20 by default");
+                assert_eq!(p.output, ReportOutput::Table);
+            }
+            other => panic!("expected plan, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn plan_needs_no_bucket_and_validates_ingest_days() {
+        // The GTM promise: read-only credentials, no --bucket/--account.
+        let cli =
+            Cli::try_parse_from(["s4logs", "plan", "--all", "--region", "us-east-1"]).unwrap();
+        assert!(cli.global.bucket.is_none());
+        assert!(cli.global.account.is_none());
+
+        let cli = Cli::try_parse_from([
+            "s4logs",
+            "plan",
+            "--log-group",
+            "/aws/lambda/*",
+            "--ingest-days",
+            "7",
+            "--top",
+            "5",
+            "--output",
+            "json",
+        ])
+        .unwrap();
+        match cli.cmd {
+            Cmd::Plan(p) => {
+                assert_eq!(p.log_group.as_deref(), Some("/aws/lambda/*"));
+                assert_eq!(p.ingest_days, 7);
+                assert_eq!(p.top, 5);
+                assert_eq!(p.output, ReportOutput::Json);
+            }
+            other => panic!("expected plan, got {other:?}"),
+        }
+        // 1..=455: CloudWatch keeps 1-day datapoints for 455 days.
+        assert!(Cli::try_parse_from(["s4logs", "plan", "--all", "--ingest-days", "0"]).is_err());
+        assert!(Cli::try_parse_from(["s4logs", "plan", "--all", "--ingest-days", "456"]).is_err());
     }
 
     #[test]

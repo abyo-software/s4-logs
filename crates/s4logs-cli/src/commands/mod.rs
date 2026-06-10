@@ -3,6 +3,7 @@
 
 pub mod drain;
 pub mod grep;
+pub mod plan;
 pub mod report;
 pub mod restore;
 pub mod serve;

@@ -47,4 +47,10 @@ impl AwsClients {
     pub fn cwl(&self) -> aws_sdk_cloudwatchlogs::Client {
         aws_sdk_cloudwatchlogs::Client::new(&self.config)
     }
+
+    /// CloudWatch **Metrics** (not Logs) — `s4logs plan` reads the
+    /// `AWS/Logs IncomingBytes` metric via `GetMetricData`.
+    pub fn cw_metrics(&self) -> aws_sdk_cloudwatch::Client {
+        aws_sdk_cloudwatch::Client::new(&self.config)
+    }
 }

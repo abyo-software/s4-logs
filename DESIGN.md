@@ -203,3 +203,25 @@ action = "cloudwatch"
 
 - `--log-group` は glob (globset) を受け、`--all` で DescribeLogGroups 全列挙。
   group ごとに独立 DrainJob (失敗 group は skip + 集計報告、exit code 1)。
+
+## 12. Wave 4 amendments (2026-06-10 追記)
+
+- **Manifest schema (§7) v1 追加 optional fields**: `reconciled_at_ms: i64`
+  (最後に追補が発生した reconcile の wall clock) と `reconciled_added: u64`
+  (累計追補レコード数、`record_count` には算入済み)。serde skip-if-none、
+  `raw_bytes` と同じ byte 互換規律。クリーンな reconcile は manifest を
+  書き換えない。
+- **Reconcile 追補オブジェクト命名**: `{window_start_ms}-r{attempt:02}{seq:04}`。
+  base の `{seq:06}` (6 桁固定) と衝突しない。attempt は manifest 内の既存
+  最大 +1 (1–99、超過は typed error → manifest 削除 + 再 drain を案内)。
+- **決定性 (§7)**: `shard_streams > 1` では object 名は決定的のまま、
+  **content は byte 決定的でなくなる** (shard ページの完了順 interleave。
+  レコード集合は同一、S4LT は min/max なので順序不要)。manifest-skip の
+  冪等性は不変。
+- **CwSource trait**: `filter_log_events` に `streams: Option<&[String]>`
+  (≤100 名、FilterLogEvents logStreamNames) を追加、`list_log_streams`
+  (paginated DescribeLogStreams) を新設。
+- **storage class**: data object のみ `--storage-class` を適用、sidecar /
+  manifest は常に STANDARD (GIR の 128 KiB 最低課金 + hot path)。
+- **`s4logs plan`**: read-only 診断 (DescribeLogGroups storedBytes = CW の
+  gzip 課金実バイト + CW Metrics IncomingBytes)。bucket / account 不要。

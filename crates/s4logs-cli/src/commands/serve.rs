@@ -54,7 +54,8 @@ pub async fn run(global: &GlobalArgs, args: &ServeArgs) -> Result<()> {
     };
 
     let clients = aws::load(global).await;
-    let store = ObjectStore::new(clients.s3(), bucket, &global.prefix);
+    let store = ObjectStore::new(clients.s3(), bucket, &global.prefix)
+        .with_storage_class(args.storage_class.map(crate::cli::StorageClassArg::to_sdk));
     let forward: Arc<dyn CwForward> = if args.no_cloudwatch {
         tracing::info!("--no-cloudwatch: cloudwatch/both routes are no-ops");
         Arc::new(NoopCwForward)

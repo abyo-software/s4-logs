@@ -66,6 +66,18 @@ pub struct Manifest {
     pub completed_at_ms: i64,
     /// s4logs-drain crate version that wrote this manifest.
     pub drain_version: String,
+    /// Wall-clock time of the most recent reconcile that **appended** to
+    /// this window (wave 4K). Optional + skipped when absent — the same
+    /// byte-compat discipline as `raw_bytes`: pre-4K manifests decode to
+    /// `None`, old readers ignore the field, and a manifest that was never
+    /// reconciled (or whose reconciles found nothing missing) re-encodes
+    /// byte-identically to a pre-4K one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reconciled_at_ms: Option<i64>,
+    /// Cumulative records appended by reconcile runs (sums across repeated
+    /// reconciles). `record_count` already includes these.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reconciled_added: Option<u64>,
 }
 
 #[derive(Debug, Error)]
@@ -298,6 +310,8 @@ mod tests {
             record_count: 10,
             completed_at_ms: 1_717_550_000_000,
             drain_version: "test".into(),
+            reconciled_at_ms: None,
+            reconciled_added: None,
         }
     }
 
@@ -311,15 +325,41 @@ mod tests {
         );
     }
 
-    /// Pre-wave-3G manifests have no `raw_bytes`; they must still decode
-    /// (to `None`) and re-encode without inventing the field.
+    /// Pre-wave-3G manifests have no `raw_bytes`; pre-wave-4K manifests
+    /// additionally have no `reconciled_*` fields. Both must still decode
+    /// (to `None`) and re-encode without inventing the fields.
     #[test]
     fn manifest_without_raw_bytes_still_decodes() {
         let legacy = r#"{"version":1,"account":"a","log_group":"/g","window_start_ms":0,"window_end_ms":1,"objects":[{"data_key":"k","etag":null,"crc32c":1,"body_len":2,"record_count":3,"min_ts":0,"max_ts":0}],"record_count":3,"completed_at_ms":9,"drain_version":"old"}"#;
         let m = Manifest::from_json_bytes(legacy.as_bytes()).unwrap();
         assert_eq!(m.objects[0].raw_bytes, None);
+        assert_eq!(m.reconciled_at_ms, None);
+        assert_eq!(m.reconciled_added, None);
         let re = String::from_utf8(m.to_json_bytes().unwrap().to_vec()).unwrap();
         assert!(!re.contains("raw_bytes"), "None must stay omitted: {re}");
+        assert!(!re.contains("reconciled"), "None must stay omitted: {re}");
+        // Byte-identical re-encode: legacy manifests pass through untouched.
+        assert_eq!(re, legacy);
+    }
+
+    /// Golden test for the wave-4K reconcile fields: exact names and
+    /// placement (after `drain_version`) are part of the on-disk format.
+    #[test]
+    fn manifest_with_reconcile_fields_golden_and_roundtrip() {
+        let m = Manifest {
+            reconciled_at_ms: Some(1_717_551_111_000),
+            reconciled_added: Some(34),
+            ..sample()
+        };
+        let json = String::from_utf8(m.to_json_bytes().unwrap().to_vec()).unwrap();
+        assert!(
+            json.ends_with(
+                r#""drain_version":"test","reconciled_at_ms":1717551111000,"reconciled_added":34}"#
+            ),
+            "reconcile fields must serialize after drain_version: {json}"
+        );
+        let back = Manifest::from_json_bytes(json.as_bytes()).unwrap();
+        assert_eq!(back, m);
     }
 
     #[test]

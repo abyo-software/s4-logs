@@ -83,6 +83,20 @@ Index sidecars live under a **separate prefix** so Athena/Spark pointed at
 > Flags shown are the documented interface (DESIGN.md §9) — run
 > `s4logs --help` for the authoritative list.
 
+### Start here: see your savings (read-only, no charges)
+
+```console
+# DescribeLogGroups + GetMetricData only — no writes, no bucket, read-only
+# credentials suffice. storedBytes IS CloudWatch's storage billing basis,
+# so the current-cost column needs no compression assumptions.
+s4logs plan --all
+```
+
+Prints your log groups sorted by current monthly cost (storage on CW's
+gzip-billed bytes + ingest projected from `IncomingBytes`), with projected
+Mode A (S3 Standard and Glacier IR columns) and Mode B savings. Every
+assumption behind the projections is printed in the footer.
+
 ### Drain a log group (Mode A)
 
 ```console
@@ -109,6 +123,16 @@ s4logs drain --log-group /aws/lambda/payments \
 # Whole-account sweeps: --log-group takes a glob, or use --all. Per-group
 # failures are reported and skipped; exit code 1 if any group failed.
 s4logs drain --all --bucket my-archive-bucket --group-concurrency 2
+
+# Big backlogs: page each window's streams in parallel shards and watch
+# progress. Drain speed is FilterLogEvents-latency-bound (a real 5 GiB
+# drain ran 94.6 min unsharded with zero throttling), so shards ≈ linear.
+s4logs drain --log-group /app/api --bucket my-archive-bucket \
+  --shard-streams 8 --progress
+
+# Late-arrival repair: re-page manifested windows, dedup against the
+# archive by event id, append only what is missing (see Limitations).
+s4logs drain --log-group /app/api --bucket my-archive-bucket --reconcile
 
 # What have I archived so far, and what is it saving? Reads manifests only —
 # zero CloudWatch API calls, zero S3 data reads.
@@ -375,10 +399,12 @@ anyone, not just us. S4 Logs handles this honestly:
   agents may deliver much later). A window drained before its stragglers
   arrive gets a manifest, and manifests are skipped on re-runs — so those
   events never reach the archive. Mitigations: drain data that is at least
-  hours old (the normal archival pattern satisfies this trivially); to
-  repair a suspect window, **delete its manifest and re-drain** — object
-  names are deterministic, so this is safe and was verified live. An
-  `event_id`-based reconcile mode is on the roadmap.
+  hours old (the normal archival pattern satisfies this trivially), and run
+  `s4logs drain --reconcile` over suspect ranges — it re-pages manifested
+  windows, dedups against the archive by event identity, and appends only
+  what is missing. Reconcile re-pages the full window (same FilterLogEvents
+  time cost as draining it), so it is a repair tool, not a cheap
+  verification sweep.
 - **Drain speed is latency-bound, not quota-bound.** A real 5 GiB drain
   took 94.6 min at `--concurrency 4` with zero throttling and $0 in API
   charges; FilterLogEvents page latency is the bottleneck, so TB-scale

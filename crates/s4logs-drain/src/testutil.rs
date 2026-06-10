@@ -10,12 +10,16 @@ use async_trait::async_trait;
 use crate::cw::{CwError, CwEvent, CwEventPage, CwSource, LogGroupInfo};
 
 pub(crate) fn event(timestamp: i64, message: &str) -> CwEvent {
+    event_in_stream(timestamp, "app/i-0abc", message)
+}
+
+pub(crate) fn event_in_stream(timestamp: i64, stream: &str, message: &str) -> CwEvent {
     CwEvent {
         timestamp,
         message: message.to_owned(),
-        log_stream_name: "app/i-0abc".to_owned(),
+        log_stream_name: stream.to_owned(),
         ingestion_time: Some(timestamp + 250),
-        event_id: Some(format!("evt-{timestamp}")),
+        event_id: Some(format!("evt-{stream}-{timestamp}")),
     }
 }
 
@@ -47,6 +51,11 @@ pub(crate) struct MockCw {
     /// Misbehave: ignore the requested range (tests the drain's defensive
     /// out-of-window drop).
     pub ignore_range_filter: bool,
+    /// Scripted `list_log_streams` answer. When empty, the distinct stream
+    /// names of the group's event pool are derived instead (sorted).
+    pub stream_names: Vec<String>,
+    /// `(log_group, prefix_hint)` per `list_log_streams` call.
+    pub list_stream_calls: Mutex<Vec<(String, Option<String>)>>,
 }
 
 impl Default for MockCw {
@@ -67,6 +76,8 @@ impl Default for MockCw {
             groups: Vec::new(),
             list_hints: Mutex::new(Vec::new()),
             ignore_range_filter: false,
+            stream_names: Vec::new(),
+            list_stream_calls: Mutex::new(Vec::new()),
         }
     }
 }
@@ -79,6 +90,7 @@ impl CwSource for MockCw {
         start_ms: i64,
         end_ms_exclusive: i64,
         next_token: Option<&str>,
+        streams: Option<&[String]>,
     ) -> Result<CwEventPage, CwError> {
         self.filter_calls.fetch_add(1, Ordering::SeqCst);
         if self.fail_filter_groups.contains(log_group) {
@@ -107,6 +119,7 @@ impl CwSource for MockCw {
                 self.ignore_range_filter
                     || (e.timestamp >= start_ms && e.timestamp < end_ms_exclusive)
             })
+            .filter(|e| streams.is_none_or(|s| s.contains(&e.log_stream_name)))
             .cloned()
             .collect();
         let offset: usize = next_token.map(|t| t.parse().unwrap_or(0)).unwrap_or(0);
@@ -130,6 +143,28 @@ impl CwSource for MockCw {
             .find(|(n, _)| n == log_group)
             .map(|(_, i)| i.clone())
             .unwrap_or_else(|| self.info.clone()))
+    }
+
+    async fn list_log_streams(
+        &self,
+        log_group: &str,
+        prefix_hint: Option<&str>,
+    ) -> Result<Vec<String>, CwError> {
+        self.list_stream_calls
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push((log_group.to_owned(), prefix_hint.map(str::to_owned)));
+        let mut names: Vec<String> = if self.stream_names.is_empty() {
+            let pool = self.group_events.get(log_group).unwrap_or(&self.events);
+            let mut set: Vec<String> = pool.iter().map(|e| e.log_stream_name.clone()).collect();
+            set.sort();
+            set.dedup();
+            set
+        } else {
+            self.stream_names.clone()
+        };
+        names.retain(|n| prefix_hint.is_none_or(|p| n.starts_with(p)));
+        Ok(names)
     }
 
     async fn list_log_groups(

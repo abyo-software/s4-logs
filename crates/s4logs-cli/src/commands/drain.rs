@@ -9,12 +9,13 @@ use anyhow::{Context, Result};
 use s4logs_core::store::ObjectStore;
 use s4logs_drain::{
     AwsCwSource, DrainOptions, DrainReport, GroupSelector, LogGroupInfo, MultiDrainReport,
-    ObjectStoreManifestStore, RetentionPlan, RetentionRequest, discover_log_groups, drain_groups,
+    ObjectStoreChunkReader, ObjectStoreManifestStore, Progress, ProgressEvent, ReconcileJob,
+    ReconcileReport, RetentionPlan, RetentionRequest, discover_log_groups, drain_groups,
     enforce_retention,
 };
 
 use crate::aws;
-use crate::cli::{DrainArgs, GlobalArgs, UsageError};
+use crate::cli::{DrainArgs, GlobalArgs, StorageClassArg, UsageError};
 use crate::timearg::{fmt_ts, format_bytes};
 
 fn now_ms() -> i64 {
@@ -51,9 +52,11 @@ pub async fn run(global: &GlobalArgs, args: &DrainArgs) -> Result<()> {
     let account = global.require_account()?;
 
     let clients = aws::load(global).await;
-    let store = ObjectStore::new(clients.s3(), bucket, &global.prefix);
+    let store = ObjectStore::new(clients.s3(), bucket, &global.prefix)
+        .with_storage_class(args.storage_class.map(StorageClassArg::to_sdk));
     let cw = Arc::new(AwsCwSource::new(clients.cwl()));
     let sink = Arc::new(store.clone());
+    let reader_store = store.clone();
     let manifests = Arc::new(ObjectStoreManifestStore::new(store));
 
     let groups = discover_log_groups(&*cw, &selector)
@@ -77,31 +80,74 @@ pub async fn run(global: &GlobalArgs, args: &DrainArgs) -> Result<()> {
     base.chunk_target_bytes = args.chunk_target;
     base.concurrency = args.concurrency;
     base.dry_run = args.dry_run;
+    base.shard_streams = args.shard_streams.max(1);
+    if args.progress {
+        base.progress = Progress::callback(progress_renderer());
+    }
     let window_ms = base.window_ms;
 
-    let multi = drain_groups(
-        cw.clone(),
-        sink,
-        manifests.clone(),
-        &base,
-        groups.clone(),
-        args.group_concurrency,
-    )
-    .await;
-
-    for g in &multi.groups {
-        match &g.result {
-            Ok(report) => {
-                for line in report_lines(report) {
-                    println!("{line}");
+    // (group name, succeeded) — drives the retention pass and the exit code
+    // for both run modes.
+    let outcomes: Vec<(String, bool)> = if args.reconcile {
+        // Repair mode: re-page manifested windows too, dedup by event
+        // identity, append only what is missing. Groups run sequentially —
+        // reconcile is a targeted repair tool, not a throughput path.
+        let reader = Arc::new(ObjectStoreChunkReader::new(reader_store));
+        let mut outcomes = Vec::with_capacity(groups.len());
+        for (name, _) in &groups {
+            let mut opts = base.clone();
+            opts.log_group = name.clone();
+            let job = ReconcileJob::new(
+                cw.clone(),
+                sink.clone(),
+                manifests.clone(),
+                reader.clone(),
+                opts,
+            );
+            match job.run().await {
+                Ok(report) => {
+                    for line in reconcile_lines(&report) {
+                        println!("{line}");
+                    }
+                    outcomes.push((name.clone(), true));
+                }
+                Err(err) => {
+                    println!("Reconcile FAILED for {name:?}: {err:#}");
+                    outcomes.push((name.clone(), false));
                 }
             }
-            Err(err) => println!("Drain FAILED for {:?}: {err:#}", g.log_group),
         }
-    }
-    for line in aggregate_lines(&multi) {
-        println!("{line}");
-    }
+        outcomes
+    } else {
+        let multi = drain_groups(
+            cw.clone(),
+            sink,
+            manifests.clone(),
+            &base,
+            groups.clone(),
+            args.group_concurrency,
+        )
+        .await;
+
+        for g in &multi.groups {
+            match &g.result {
+                Ok(report) => {
+                    for line in report_lines(report) {
+                        println!("{line}");
+                    }
+                }
+                Err(err) => println!("Drain FAILED for {:?}: {err:#}", g.log_group),
+            }
+        }
+        for line in aggregate_lines(&multi) {
+            println!("{line}");
+        }
+        multi
+            .groups
+            .iter()
+            .map(|g| (g.log_group.clone(), g.result.is_ok()))
+            .collect()
+    };
 
     if let Some(retention_days) = args.retention_days {
         let apply = args.apply_retention && !args.dry_run;
@@ -110,23 +156,20 @@ pub async fn run(global: &GlobalArgs, args: &DrainArgs) -> Result<()> {
         }
         let infos: std::collections::HashMap<&str, &LogGroupInfo> =
             groups.iter().map(|(n, i)| (n.as_str(), i)).collect();
-        for g in &multi.groups {
-            if g.result.is_err() {
-                println!(
-                    "Retention gate for {:?}: skipped (drain failed)",
-                    g.log_group
-                );
+        for (name, ok) in &outcomes {
+            if !ok {
+                println!("Retention gate for {name:?}: skipped (drain failed)");
                 continue;
             }
             // Coverage must start at the log group creation time (DESIGN.md
             // §6 step 4) — anything older than that cannot hold events. The
             // discovery info already carries it; no extra DescribeLogGroups.
-            let Some(info) = infos.get(g.log_group.as_str()) else {
-                continue; // unreachable: drain_groups preserves the name set
+            let Some(info) = infos.get(name.as_str()) else {
+                continue; // unreachable: outcomes preserve the name set
             };
             let req = RetentionRequest {
                 account: account.clone(),
-                log_group: g.log_group.clone(),
+                log_group: name.clone(),
                 retention_days,
                 coverage_from_ms: info.creation_time_ms,
                 now_ms: now_ms(),
@@ -134,19 +177,23 @@ pub async fn run(global: &GlobalArgs, args: &DrainArgs) -> Result<()> {
             };
             let plan = enforce_retention(&*cw, &*manifests, &global.prefix, &req, apply)
                 .await
-                .with_context(|| format!("retention gate for {:?}", g.log_group))?;
+                .with_context(|| format!("retention gate for {name:?}"))?;
             for line in retention_lines(&plan, apply) {
                 println!("{line}");
             }
         }
     }
 
-    if multi.any_failed() {
-        let failed: Vec<&str> = multi.failures().map(|(g, _)| g).collect();
+    let failed: Vec<&str> = outcomes
+        .iter()
+        .filter(|(_, ok)| !ok)
+        .map(|(n, _)| n.as_str())
+        .collect();
+    if !failed.is_empty() {
         anyhow::bail!(
             "{} of {} log group(s) failed: {}",
             failed.len(),
-            multi.groups.len(),
+            outcomes.len(),
             failed.join(", ")
         );
     }
@@ -261,6 +308,87 @@ fn retention_lines(plan: &RetentionPlan, apply_requested: bool) -> Vec<String> {
         lines.push("  coverage OK — report only (pass --apply-retention to apply)".to_owned());
     }
     lines
+}
+
+/// Human summary of a reconcile run (mirrors `report_lines`).
+fn reconcile_lines(r: &ReconcileReport) -> Vec<String> {
+    let tag = if r.dry_run { " (dry-run)" } else { "" };
+    vec![
+        format!("Reconcile report for {:?}{tag}", r.log_group),
+        format!(
+            "  windows : {} total = {} drained (no manifest) + {} reconciled ({} repaired)",
+            r.windows_total, r.windows_drained, r.windows_reconciled, r.windows_repaired
+        ),
+        format!(
+            "  events  : {} in CloudWatch, {} already archived, {} appended",
+            r.cw_events, r.already_archived, r.appended
+        ),
+        format!("  objects : {} written", r.objects_written),
+    ]
+}
+
+/// Throttled stderr renderer for `--progress`. Window lifecycle events are
+/// always printed; per-page events are sampled (one line per 5 s) so a
+/// 90-minute drain stays readable.
+fn progress_renderer() -> impl Fn(ProgressEvent) + Send + Sync + 'static {
+    use std::sync::Mutex;
+    use std::time::{Duration, Instant};
+    let last_page = Mutex::new(Instant::now() - Duration::from_secs(10));
+    move |ev| match ev {
+        ProgressEvent::WindowStarted { window } => {
+            eprintln!("[drain] window {} started", fmt_ts(window.start_ms));
+        }
+        ProgressEvent::WindowSkipped { window } => {
+            eprintln!(
+                "[drain] window {} skipped (manifest exists)",
+                fmt_ts(window.start_ms)
+            );
+        }
+        ProgressEvent::Page {
+            window,
+            events,
+            bytes_so_far,
+        } => {
+            let mut last = last_page.lock().unwrap_or_else(|e| e.into_inner());
+            if last.elapsed() >= Duration::from_secs(5) {
+                *last = Instant::now();
+                eprintln!(
+                    "[drain] window {}: +{events} events, {} so far",
+                    fmt_ts(window.start_ms),
+                    format_bytes(bytes_so_far)
+                );
+            }
+        }
+        ProgressEvent::ObjectWritten {
+            key,
+            raw_bytes,
+            compressed_bytes,
+        } => {
+            eprintln!(
+                "[drain] wrote {key} ({} -> {})",
+                format_bytes(raw_bytes),
+                format_bytes(compressed_bytes)
+            );
+        }
+        ProgressEvent::WindowDone { window, records } => {
+            eprintln!(
+                "[drain] window {} done: {records} records",
+                fmt_ts(window.start_ms)
+            );
+        }
+        ProgressEvent::ReconcileWindowDone {
+            window,
+            cw_events,
+            already_archived,
+            appended,
+        } => {
+            eprintln!(
+                "[drain] window {} reconciled: {cw_events} in CW, {already_archived} archived, {appended} appended",
+                fmt_ts(window.start_ms)
+            );
+        }
+        _ => {}
+    }
 }
 
 #[cfg(test)]

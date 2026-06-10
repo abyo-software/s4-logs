@@ -315,6 +315,8 @@ mod tests {
             objects,
             completed_at_ms: 0,
             drain_version: "test".into(),
+            reconciled_at_ms: None,
+            reconciled_added: None,
         }
     }
 
