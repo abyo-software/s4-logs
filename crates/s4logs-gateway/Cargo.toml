@@ -32,3 +32,6 @@ uuid.workspace = true
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util"] }
+# `ServiceExt::oneshot` for in-process axum requests (wave 1C tests).
+tower = { version = "0.5", features = ["util"] }
+zstd.workspace = true
