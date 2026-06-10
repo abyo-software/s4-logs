@@ -2975,6 +2975,7 @@ dependencies = [
  "aws-sigv4",
  "aws-smithy-mocks",
  "axum",
+ "bolero",
  "bytes",
  "futures",
  "globset",

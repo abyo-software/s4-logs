@@ -51,7 +51,7 @@ const UNSIGNED_PAYLOAD: &str = "UNSIGNED-PAYLOAD";
 
 /// Verification failure, mapped to the wire by `handlers`.
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum AuthError {
+pub enum AuthError {
     /// No `Authorization` header at all.
     MissingToken,
     /// Anything else — the reason goes to the response message and the
@@ -61,7 +61,11 @@ pub(crate) enum AuthError {
 
 /// The signature-relevant view of one received request. `query` is the raw
 /// (still percent-encoded) query string; `body` the full payload.
-pub(crate) struct RequestView<'a> {
+///
+/// `pub` (not `pub(crate)`) so the bolero fuzz target in `tests/` can drive
+/// [`verify`] with adversarial requests; not part of the supported API.
+#[doc(hidden)]
+pub struct RequestView<'a> {
     pub method: &'a str,
     pub path: &'a str,
     pub query: Option<&'a str>,
@@ -70,7 +74,10 @@ pub(crate) struct RequestView<'a> {
 }
 
 /// Verify one request against the static credential.
-pub(crate) fn verify(
+///
+/// `pub` + `#[doc(hidden)]` for the fuzz target only — see [`RequestView`].
+#[doc(hidden)]
+pub fn verify(
     access_key: &str,
     secret_key: &str,
     req: &RequestView<'_>,

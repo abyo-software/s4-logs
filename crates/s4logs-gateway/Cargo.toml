@@ -39,6 +39,10 @@ tracing.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
+# Bolero fuzz targets (tests/fuzz_bolero.rs) — same check! API drives the
+# plain-test mode (CI smoke) and the libfuzzer engine (evo-x2 fuzz farm).
+# Crate-local, mirroring s4logs-core.
+bolero = "0.13"
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util"] }
 # `ServiceExt::oneshot` for in-process axum requests (wave 1C tests).
 tower = { version = "0.5", features = ["util"] }
