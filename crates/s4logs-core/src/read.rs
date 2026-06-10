@@ -6,6 +6,7 @@ use std::io::Read;
 use s4_codec::index::FrameIndex;
 use thiserror::Error;
 
+use crate::record::{LogRecord, RecordError};
 use crate::tsindex::TsIndex;
 
 /// Half-open event-time window `[from_ms, to_ms_exclusive)`.
@@ -118,6 +119,42 @@ pub fn decompress_frames(input: &[u8], expected_original: u64) -> Result<Vec<u8>
     Ok(out)
 }
 
+/// Streaming iterator over decompressed JSONL bytes: one [`LogRecord`] per
+/// non-empty line (grep/restore decode frame-by-frame and must not
+/// materialize a `Vec<LogRecord>` per multi-MiB frame). The final line may
+/// lack a trailing `\n`; empty lines are skipped rather than treated as
+/// parse errors so `split`-style padding can't poison a frame.
+#[derive(Debug, Clone)]
+pub struct RecordLines<'a> {
+    rest: &'a [u8],
+}
+
+impl<'a> RecordLines<'a> {
+    pub fn new(bytes: &'a [u8]) -> Self {
+        Self { rest: bytes }
+    }
+}
+
+impl Iterator for RecordLines<'_> {
+    type Item = Result<LogRecord, RecordError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if self.rest.is_empty() {
+                return None;
+            }
+            let (line, rest) = match self.rest.iter().position(|&b| b == b'\n') {
+                Some(i) => (&self.rest[..i], &self.rest[i + 1..]),
+                None => (self.rest, &self.rest[..0]),
+            };
+            self.rest = rest;
+            if !line.is_empty() {
+                return Some(LogRecord::from_jsonl(line));
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {
@@ -150,8 +187,7 @@ mod tests {
             from_ms: 30_000,
             to_ms_exclusive: 40_000,
         };
-        let spans =
-            frames_overlapping(&chunk.frame_index, &chunk.ts_index, &range).unwrap();
+        let spans = frames_overlapping(&chunk.frame_index, &chunk.ts_index, &range).unwrap();
         assert!(!spans.is_empty());
         assert!(spans.len() < chunk.frame_index.entries.len());
         for span in spans {
@@ -197,14 +233,47 @@ mod tests {
     }
 
     #[test]
+    fn record_lines_streams_records_and_skips_blank_lines() {
+        let mut buf = Vec::new();
+        for i in 0..3i64 {
+            LogRecord {
+                timestamp: i,
+                stream: "s".into(),
+                message: format!("m{i}"),
+                ingestion_time: None,
+                event_id: None,
+            }
+            .append_jsonl(&mut buf)
+            .unwrap();
+        }
+        buf.extend_from_slice(b"\n\n"); // blank padding must be skipped
+        let recs: Vec<LogRecord> = RecordLines::new(&buf).collect::<Result<_, _>>().unwrap();
+        assert_eq!(recs.len(), 3);
+        assert_eq!(recs[2].message, "m2");
+        // Final line without trailing newline still parses.
+        let trimmed = buf.trim_ascii_end();
+        let recs2: Vec<LogRecord> = RecordLines::new(trimmed).collect::<Result<_, _>>().unwrap();
+        assert_eq!(recs, recs2);
+        assert!(RecordLines::new(b"").next().is_none());
+    }
+
+    #[test]
+    fn record_lines_surfaces_parse_errors() {
+        let bytes = b"{\"timestamp\":1,\"stream\":\"s\",\"message\":\"m\"}\nnot json\n";
+        let items: Vec<_> = RecordLines::new(bytes).collect();
+        assert_eq!(items.len(), 2);
+        assert!(items[0].is_ok());
+        assert!(items[1].is_err());
+    }
+
+    #[test]
     fn coalesce_merges_adjacent_frames() {
         let chunk = chunk_with_frames();
         let range = TimeRange {
             from_ms: 0,
             to_ms_exclusive: i64::MAX,
         };
-        let spans =
-            frames_overlapping(&chunk.frame_index, &chunk.ts_index, &range).unwrap();
+        let spans = frames_overlapping(&chunk.frame_index, &chunk.ts_index, &range).unwrap();
         let merged = coalesce_spans(&spans, 0);
         assert_eq!(merged.len(), 1, "contiguous frames must merge");
         assert_eq!(merged[0].0, 0);

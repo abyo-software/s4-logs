@@ -71,8 +71,7 @@ pub fn norm_prefix(prefix: &str) -> String {
 /// UTC calendar date (`YYYY-MM-DD`) of an epoch-milliseconds timestamp.
 /// Timestamps outside chrono's representable range clamp to epoch.
 pub fn date_from_ts_ms(ts_ms: i64) -> String {
-    let dt = DateTime::<Utc>::from_timestamp_millis(ts_ms)
-        .unwrap_or(DateTime::<Utc>::UNIX_EPOCH);
+    let dt = DateTime::<Utc>::from_timestamp_millis(ts_ms).unwrap_or(DateTime::<Utc>::UNIX_EPOCH);
     dt.format("%Y-%m-%d").to_string()
 }
 

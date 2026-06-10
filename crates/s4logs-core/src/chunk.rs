@@ -225,7 +225,10 @@ mod tests {
         // Plain zstd must decode the body with no S4 tooling.
         let out = zstd::stream::decode_all(&chunk.body[..]).unwrap();
         assert_eq!(out.len() as u64, chunk.uncompressed_bytes);
-        let lines: Vec<_> = out.split(|&b| b == b'\n').filter(|l| !l.is_empty()).collect();
+        let lines: Vec<_> = out
+            .split(|&b| b == b'\n')
+            .filter(|l| !l.is_empty())
+            .collect();
         assert_eq!(lines.len(), 2);
         assert_eq!(LogRecord::from_jsonl(lines[0]).unwrap().message, "hello");
     }
@@ -241,8 +244,14 @@ mod tests {
                 .unwrap();
         }
         let chunk = w.finish().unwrap().unwrap();
-        assert!(chunk.frame_index.entries.len() > 1, "expected multiple frames");
-        assert_eq!(chunk.frame_index.entries.len(), chunk.ts_index.entries.len());
+        assert!(
+            chunk.frame_index.entries.len() > 1,
+            "expected multiple frames"
+        );
+        assert_eq!(
+            chunk.frame_index.entries.len(),
+            chunk.ts_index.entries.len()
+        );
         // Concatenated standard frames decode as one stream.
         let out = zstd::stream::decode_all(&chunk.body[..]).unwrap();
         assert_eq!(out.len() as u64, chunk.uncompressed_bytes);

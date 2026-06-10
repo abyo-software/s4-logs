@@ -50,7 +50,11 @@ pub enum TsIndexError {
     #[error("ts index entry count {got} exceeds MAX_FRAMES={MAX_FRAMES}")]
     TooManyFrames { got: u64 },
     #[error("ts index entry {idx} has min_ts {min_ts} > max_ts {max_ts}")]
-    InvalidEntry { idx: usize, min_ts: i64, max_ts: i64 },
+    InvalidEntry {
+        idx: usize,
+        min_ts: i64,
+        max_ts: i64,
+    },
 }
 
 pub fn encode_ts_index(idx: &TsIndex) -> Bytes {
@@ -117,9 +121,18 @@ mod tests {
     fn sample() -> TsIndex {
         TsIndex {
             entries: vec![
-                TsEntry { min_ts: 100, max_ts: 200 },
-                TsEntry { min_ts: 150, max_ts: 900 },
-                TsEntry { min_ts: -5, max_ts: -1 },
+                TsEntry {
+                    min_ts: 100,
+                    max_ts: 200,
+                },
+                TsEntry {
+                    min_ts: 150,
+                    max_ts: 900,
+                },
+                TsEntry {
+                    min_ts: -5,
+                    max_ts: -1,
+                },
             ],
         }
     }

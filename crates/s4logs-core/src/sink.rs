@@ -22,6 +22,11 @@ use crate::tsindex::encode_ts_index;
 pub enum SinkError {
     #[error("chunk storage failed: {0}")]
     Storage(String),
+    /// S3-backed sink failure (data or sidecar PUT). Sidecar failures are
+    /// surfaced, never swallowed — a chunk without both sidecars must fail
+    /// the window so drain retries it (DESIGN.md §6).
+    #[error("object store write failed: {0}")]
+    Store(#[from] crate::store::StoreError),
 }
 
 /// Receipt for a stored chunk; everything a drain manifest entry needs.

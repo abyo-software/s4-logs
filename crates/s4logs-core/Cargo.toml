@@ -28,6 +28,13 @@ tracing.workspace = true
 zstd.workspace = true
 
 [dev-dependencies]
+# HTTP-free SDK operation mocking for ObjectStore unit tests (no LocalStack
+# here — wave 2E owns docker E2E). Crate-local on purpose: only core needs it.
+aws-smithy-mocks = "0.2"
+# `test-util` unlocks `Config::with_test_defaults_v2` which `mock_client!`
+# needs (dummy credentials, no retry sleep). Dev-only; release builds of
+# dependents do not inherit it.
+aws-sdk-s3 = { workspace = true, features = ["test-util"] }
 proptest.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
