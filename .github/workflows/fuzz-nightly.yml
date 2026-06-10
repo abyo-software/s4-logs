@@ -1,0 +1,118 @@
+name: Nightly fuzz
+
+# s4 と同じ規律 (s4/.github/workflows/fuzz-nightly.yml を踏襲):
+# - proptest を 1M cases/property に escalation (push CI は 10K)
+# - cargo-bolero の coverage-guided libfuzzer を 30 min/target で回す
+# - 失敗 → GitHub Issue 自動 open + corpus / regression artifact 保存
+#
+# s4 と違い root Cargo.toml に [profile.fuzz] が無い (DESIGN 契約で root は
+# orchestrator 管理) ため、cargo-bolero は `--profile release` で回す。
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # 03:00 UTC = 12:00 JST
+  workflow_dispatch:
+    inputs:
+      cases:
+        description: "PROPTEST_CASES (default 1000000 = 1M cases / property)"
+        default: "1000000"
+        required: false
+      bolero_minutes:
+        description: "Per-bolero-target wall clock (minutes)"
+        default: "30"
+        required: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+# Issue 自動 open + artifact upload に必要な権限を明示
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  proptest-stress:
+    name: proptest stress (1M cases / property)
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: proptest stress run
+        env:
+          PROPTEST_CASES: ${{ github.event.inputs.cases || '1000000' }}
+        run: |
+          cargo test -p s4logs-core --release \
+            --test proptest_format --test fuzz_bolero \
+            -- --nocapture
+      - name: Upload proptest-regressions artifact
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: proptest-regressions-${{ github.run_id }}
+          path: "**/*.proptest-regressions"
+          if-no-files-found: ignore
+
+  bolero-coverage-guided:
+    name: bolero coverage-guided (libfuzzer, ${{ matrix.target }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - ts_index_decode_bolero
+          - parse_data_key_bolero
+          - unsanitize_log_group_bolero
+          - log_record_from_jsonl_bolero
+          - decompress_frames_bolero
+          - chunk_roundtrip_bolero
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-bolero
+        run: cargo install cargo-bolero
+      - name: Run bolero target with libfuzzer
+        run: |
+          cargo bolero test --engine libfuzzer --profile release "${{ matrix.target }}" -- \
+            -max_total_time=$(( ${{ github.event.inputs.bolero_minutes || '30' }} * 60 )) \
+            || echo "fuzz target found a crash, see corpus artifact"
+        working-directory: crates/s4logs-core
+      - name: Upload corpus + crash artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: bolero-corpus-${{ matrix.target }}-${{ github.run_id }}
+          path: |
+            crates/s4logs-core/tests/__fuzz__/${{ matrix.target }}/corpus/**
+            crates/s4logs-core/tests/__fuzz__/${{ matrix.target }}/crashes/**
+          if-no-files-found: ignore
+
+  open-issue-on-failure:
+    name: Open GitHub issue if fuzz failed
+    needs: [proptest-stress, bolero-coverage-guided]
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const title = `Nightly fuzz failure ${context.runId}`;
+            const body = `Nightly fuzz job [${context.runId}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) failed.\n\n` +
+                         `Check the run for proptest-regressions and bolero crash artifacts.\n` +
+                         `Reproduce locally:\n` +
+                         `\`\`\`bash\n` +
+                         `# proptest regression replay (download artifact, place .proptest-regressions in repo)\n` +
+                         `PROPTEST_CASES=1000000 cargo test -p s4logs-core --release --test proptest_format --test fuzz_bolero\n\n` +
+                         `# bolero crash replay (from crates/s4logs-core)\n` +
+                         `cargo bolero test --engine libfuzzer --profile release <target> -- <crash-file>\n` +
+                         `\`\`\`\n`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ["fuzz-failure", "bug", "priority-high"],
+            });

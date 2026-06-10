@@ -1,0 +1,86 @@
+name: Release
+
+# Tag v* → build a static linux binary, package tar.gz + sha256, create a
+# GitHub release with the artifacts.
+#
+# Targets:
+# - x86_64-unknown-linux-musl: static-pie, verified to build (musl-tools +
+#   CC=musl-gcc handles zstd-sys / aws-lc-sys C code).
+# - aarch64: TODO (honest gap) — aws-lc-sys + zstd-sys cross-compilation
+#   needs an aarch64 C toolchain (or `cross` containers) that we have not
+#   verified; shipping an untested binary would be worse than not shipping
+#   one. Add `aarch64-unknown-linux-musl` to the matrix once a verified
+#   toolchain recipe exists.
+
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: write # create the release + upload assets
+
+jobs:
+  build:
+    name: build ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Install musl toolchain
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends musl-tools
+      - name: Build
+        env:
+          CC_x86_64_unknown_linux_musl: musl-gcc
+        run: cargo build --release -p s4logs-cli --bin s4logs --target ${{ matrix.target }}
+      - name: Package (strip + tar.gz + sha256)
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME}"
+          BIN="target/${{ matrix.target }}/release/s4logs"
+          strip "$BIN"
+          STAGE="s4logs-${VERSION}-${{ matrix.target }}"
+          mkdir -p "$STAGE"
+          cp "$BIN" LICENSE NOTICE README.md "$STAGE/"
+          tar czf "${STAGE}.tar.gz" "$STAGE"
+          sha256sum "${STAGE}.tar.gz" > "${STAGE}.tar.gz.sha256"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: s4logs-${{ matrix.target }}
+          path: |
+            s4logs-*.tar.gz
+            s4logs-*.tar.gz.sha256
+          if-no-files-found: error
+
+  release:
+    name: create GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create release with artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "s4logs ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            dist/*

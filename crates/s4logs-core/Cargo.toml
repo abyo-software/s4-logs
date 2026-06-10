@@ -38,3 +38,28 @@ aws-sdk-s3 = { workspace = true, features = ["test-util"] }
 proptest.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+# Bolero fuzz targets (`tests/fuzz_bolero.rs`) — same `check!` API drives the
+# random engine under plain `cargo test` and coverage-guided libfuzzer via
+# `cargo bolero test` (nightly fuzz workflow). Crate-local (not a workspace
+# dep) because only core has fuzzable format surface; same 0.13 line as s4.
+bolero = "0.13"
+# Criterion regression-tracking benches in `benches/` — same pin discipline
+# as s4-codec: 0.5 is the last line with the `bench_function` / `Throughput`
+# API the bench sources use; `html_reports` off (CI consumes the JSON, HTML
+# rendering only adds plotters churn).
+criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+
+# Each `[[bench]]` is a `cargo bench -p s4logs-core --bench <name>` target;
+# `harness = false` lets criterion supply its own `main`. Smoke-runnable via
+# `cargo bench -p s4logs-core --bench <name> -- --quick`.
+[[bench]]
+name = "chunk_encode"
+harness = false
+
+[[bench]]
+name = "frame_prune_decode"
+harness = false
+
+[[bench]]
+name = "tsindex_codec"
+harness = false

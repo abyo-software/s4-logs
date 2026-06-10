@@ -19,11 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      # s4-codec is a path dependency on ../s4 (P1 development layout —
-      # root Cargo.toml). Clone the sibling so the workspace resolves; this
-      # step goes away once s4-codec is published (P2).
-      - name: Clone s4 sibling (s4-codec path dependency)
-        run: git clone --depth 1 https://github.com/abyo-software/s4 ../s4
+      # s4-codec resolves as a git dependency (tag v1.0.0) — no sibling
+      # clone needed since the P1 path-dep layout was retired.
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
@@ -36,6 +33,12 @@ jobs:
         env:
           PROPTEST_CASES: "10000"
         run: cargo test --workspace
+      # Fuzz smoke: the bolero targets already run under `cargo test
+      # --workspace` (random engine), but an explicit step makes a fuzz
+      # regression identifiable at a glance instead of buried in the
+      # workspace test wall. Coverage-guided runs live in fuzz-nightly.yml.
+      - name: fuzz targets smoke (bolero random engine)
+        run: cargo test -p s4logs-core --test fuzz_bolero
       - name: Upload proptest-regressions artifact (on failure)
         if: failure()
         uses: actions/upload-artifact@v6

@@ -1,0 +1,75 @@
+name: Soak (LocalStack)
+
+# Sustained-load soak of the Mode B gateway against LocalStack S3
+# (crates/s4logs-e2e/tests/soak.rs): mixed PutLogEvents load, monotonic
+# flush counters, full durability reconciliation, bounded RSS growth.
+#
+# Schedules:
+# - nightly 19:00 UTC (04:00 JST): 600 s short soak — regression tripwire.
+# - workflow_dispatch: any duration (default 3600 s).
+#
+# 24 h Marketplace soak (出品前要件): dispatch this workflow with
+# duration=86400 — BUT GitHub-hosted runners cap a job at 6 hours, so the
+# 24 h run must go on a **self-hosted runner** (swap `runs-on`) or be run
+# locally via `./scripts/soak.sh 86400` with the log attached to the
+# release evidence. The hosted cap is the only difference; the test binary
+# and assertions are identical at any duration.
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: "Soak duration in seconds (86400 = 24h Marketplace run; >18000 needs a self-hosted runner)"
+        default: "3600"
+        required: false
+      rps:
+        description: "PutLogEvents requests per second"
+        default: "50"
+        required: false
+  schedule:
+    - cron: "0 19 * * *" # 600 s nightly short soak
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+permissions:
+  contents: read
+
+jobs:
+  soak:
+    name: gateway soak against LocalStack
+    runs-on: ubuntu-latest
+    # Hosted-runner ceiling is 360; leave headroom for build + reconciliation
+    # on top of the soak duration itself.
+    timeout-minutes: 350
+    services:
+      localstack:
+        # Same pin as docker-compose.yml: the 2026.x "latest" images require
+        # a LOCALSTACK_AUTH_TOKEN and exit with code 55 without one.
+        image: localstack/localstack:3
+        ports:
+          - 4566:4566
+        env:
+          SERVICES: s3,logs
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Wait for LocalStack health
+        run: |
+          for _ in $(seq 1 60); do
+            if curl -fsS http://localhost:4566/_localstack/health >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "LocalStack did not become healthy in 60s" >&2
+          exit 1
+      - name: Run soak
+        env:
+          S4LOGS_E2E_ENDPOINT: http://localhost:4566
+          S4LOGS_SOAK_SECONDS: ${{ github.event.inputs.duration || '600' }}
+          S4LOGS_SOAK_RPS: ${{ github.event.inputs.rps || '50' }}
+        run: |
+          cargo test -p s4logs-e2e --release --test soak -- --ignored --nocapture

@@ -30,8 +30,6 @@ jobs:
           SERVICES: s3,logs
     steps:
       - uses: actions/checkout@v5
-      - name: Clone s4 sibling (s4-codec path dependency)
-        run: git clone --depth 1 https://github.com/abyo-software/s4 ../s4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Wait for LocalStack health
@@ -47,4 +45,7 @@ jobs:
       - name: Run E2E suites
         env:
           S4LOGS_E2E_ENDPOINT: http://localhost:4566
-        run: cargo test -p s4logs-e2e -- --ignored --test-threads 1
+        # --skip gateway_soak: the soak harness is also #[ignore] in this
+        # crate but has its own workflow (soak.yml) with duration knobs;
+        # running it here would double-count and pin e2e to soak duration.
+        run: cargo test -p s4logs-e2e -- --ignored --test-threads 1 --skip gateway_soak

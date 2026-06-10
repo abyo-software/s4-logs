@@ -20,4 +20,6 @@ curl -fsS http://localhost:4566/_localstack/health >/dev/null \
 # --test-threads 1: suites create/seed CloudWatch + S3 state and the gateway
 # test installs the process-global Prometheus recorder; serial keeps the
 # output readable and avoids LocalStack contention on small machines.
-cargo test -p s4logs-e2e -- --ignored --test-threads 1
+# --skip gateway_soak: the soak harness has its own wrapper with duration
+# knobs (./scripts/soak.sh) — keep the functional E2E pass fast.
+cargo test -p s4logs-e2e -- --ignored --test-threads 1 --skip gateway_soak

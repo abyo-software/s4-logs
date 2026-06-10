@@ -28,4 +28,8 @@ futures.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing.workspace = true
+# Soak test (tests/soak.rs) initializes a subscriber so gateway-side flush
+# errors (tracing::error! in the sweep path) are visible in the soak log —
+# without it an age-flush failure is silent until count reconciliation.
+tracing-subscriber.workspace = true
 zstd.workspace = true

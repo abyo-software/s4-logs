@@ -1,0 +1,14 @@
+# Keep the docker build context to what `cargo build` actually needs
+# (Cargo.toml/Cargo.lock/crates) plus LICENSE/NOTICE for the runtime stage.
+target/
+.git/
+.github/
+docs/
+scripts/
+*.md
+docker-compose.yml
+Dockerfile
+.dockerignore
+# bolero corpora / proptest regressions (test-only state, can be large)
+crates/*/tests/__fuzz__/
+**/*.proptest-regressions
