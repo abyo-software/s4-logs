@@ -117,15 +117,23 @@ pub struct DrainReport {
 pub const CW_STORAGE_USD_PER_GIB_MONTH: f64 = 0.03;
 /// S3 Standard storage price, USD per GiB-month.
 pub const S3_STORAGE_USD_PER_GIB_MONTH: f64 = 0.023;
+/// CloudWatch bills archived storage on **gzip-level-6 compressed** bytes,
+/// not raw (AWS pricing page footnote). We don't know the gzip size of the
+/// drained data, so the CW-side estimate assumes this ratio; typical text
+/// logs land 3-5x. Without it the savings estimate overstates by ~4x —
+/// found during the 2026-06-10 real-AWS controlled experiment.
+pub const CW_ASSUMED_GZIP_RATIO: f64 = 4.0;
 
 fn gib(bytes: u64) -> f64 {
     bytes as f64 / (1u64 << 30) as f64
 }
 
 impl DrainReport {
-    /// What the drained bytes cost per month if left in CloudWatch.
+    /// What the drained bytes cost per month if left in CloudWatch —
+    /// estimated on CW's gzip-compressed billing basis
+    /// ([`CW_ASSUMED_GZIP_RATIO`]).
     pub fn cw_monthly_storage_usd(&self) -> f64 {
-        gib(self.raw_bytes) * CW_STORAGE_USD_PER_GIB_MONTH
+        gib(self.raw_bytes) / CW_ASSUMED_GZIP_RATIO * CW_STORAGE_USD_PER_GIB_MONTH
     }
 
     /// What the compressed bytes cost per month in S3 Standard.
@@ -756,9 +764,11 @@ mod tests {
             compressed_bytes: 1u64 << 30,
             ..DrainReport::default()
         };
-        assert!((r.cw_monthly_storage_usd() - 0.30).abs() < 1e-9);
+        // CW side is estimated on its gzip-compressed billing basis:
+        // 10 GiB raw / 4.0 assumed gzip * $0.03 = $0.075.
+        assert!((r.cw_monthly_storage_usd() - 0.075).abs() < 1e-9);
         assert!((r.s3_monthly_storage_usd() - 0.023).abs() < 1e-9);
-        assert!((r.estimated_monthly_savings_usd() - 0.277).abs() < 1e-9);
+        assert!((r.estimated_monthly_savings_usd() - 0.052).abs() < 1e-9);
     }
 
     #[tokio::test]

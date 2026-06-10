@@ -174,25 +174,32 @@ s4logs restore --log-group /aws/lambda/payments \
 
 ## Cost model
 
-Per-GB economics (AWS list prices, us-east-1):
+Per-GB economics (AWS list prices, us-east-1). One subtlety that most
+cost write-ups miss, and that we initially got wrong too: **CloudWatch
+bills archived storage on gzip-level-6 compressed bytes**, not raw (AWS
+pricing page footnote). Typical text logs gzip ~3–5×, so the honest
+comparison is CW-gzip vs S3-zstd:
 
 | | CloudWatch as-is | Mode A (drained) | Mode B (bypassed) |
 |---|---|---|---|
-| ingest | $0.50/GB | $0.50/GB (already paid — not recoverable) | **$0 (avoided)** + negligible S3 PUTs |
-| storage | $0.03/GB·mo × retention | S3 $0.023/GB·mo ÷ compression (10–155×) ≈ **$0.0002–0.002/GB·mo** | same |
-| reduction | — | ~90–99% of the **storage** line | **~90%+ of the whole bill** (ingest dominates) |
+| ingest | $0.50/GB (raw bytes + 26 B/event) | $0.50/GB (already paid — not recoverable) | **$0 (avoided)** + negligible S3 PUTs |
+| storage | $0.03/GB·mo on gzip-6 bytes ≈ **$0.006–0.010/GB-raw·mo** | S3 $0.023/GB·mo on zstd bytes ≈ **$0.002–0.004/GB-raw·mo** | same |
+| reduction | — | **~50–70% of the storage line**, plus retention shortening removes the CW line entirely for drained data | **~90%+ of the whole bill** (ingest dominates) |
 
-Worked example, 1 TiB of logs: CloudWatch storage **$30.72/mo** → S3 at a
-conservative 10× compression **$2.36/mo**, at s4's measured 155× (nginx)
-**$0.15/mo**. In Mode B the same TiB also skips **$512** of one-time ingest.
+Worked example, 1 TiB of raw logs: CloudWatch storage ≈ **$7.7/mo** (at
+gzip 4×) → S3 at our measured 6.2× zstd **$3.8/mo**; shrink CW retention
+after draining and the CW line goes to ~0 for the drained range. In Mode B
+the same TiB skips **$512** of one-time ingest — ingest, not storage, is
+where the bill lives.
 
 **Break-even honesty** (same policy as S4's README): if your CloudWatch
 Logs bill is **under $500/month, the OSS version is all you need** — and
-even that may be more moving parts than your problem deserves. Mode A pays
-off for long-retention / high-volume accounts; Mode B pays off when ingest
-dominates (that is most accounts). Also budget for the drain itself: the
-FilterLogEvents read path is an API cost we have **not yet measured at
-scale** (see Limitations).
+even that may be more moving parts than your problem deserves. Mode A on
+its own is a storage optimization with real but modest margins; the
+compelling moves are **retention shortening** (Mode A's gate makes it safe)
+and **Mode B ingest avoidance**. Draining itself costs ~$0 in API charges:
+FilterLogEvents has no per-call price (verified on a real 5 GiB drain —
+see below), only time and account quota.
 
 ### Measured compression (synthetic corpora)
 
@@ -212,6 +219,26 @@ themselves far more): the S4 family reference on a **real** corpus is
 [s4's measured **155×** on 256 MiB of nginx logs at 3.7 GB/s](https://github.com/abyo-software/s4#headline-numbers)
 (cpu-zstd-3, 2026-05-13). Treat 8–11× as the floor and 155× as what
 repetitive access logs actually do.
+
+### Verified against real AWS (controlled experiment, 2026-06-10)
+
+We ran the full Mode A pipeline against a real us-east-1 account —
+**controlled and synthetic** (we seeded the data ourselves; labeled as
+such, not passed off as an organic workload):
+
+| Step | Measured |
+|---|---|
+| Seed: PutLogEvents, 16 streams | 5.00 GiB message bytes, 33,163,647 events, 0 rejections, 592 s (**8.7 MiB/s** aggregate) |
+| Backdated-event visibility | events ingested with past timestamps took **3–5.5 min** to appear in FilterLogEvents (see Limitations — this interacts with drain manifests) |
+| Drain: 5 windows, `--concurrency 4` | **94.6 min wall**, **0 ThrottlingExceptions**, $0 API charges (FilterLogEvents is unmetered; per-page latency is the bottleneck) |
+| Archive | 9.7 GiB JSONL → **1.6 GiB zstd (6.2×)**, 41 objects |
+| Fidelity | spot 60 s slice: CW 160,000 = archive 160,000; Athena full count = drain count = **33,163,613** (34 events = 0.0001% vs the seeder's own count remain unattributed — see Limitations) |
+| `FilterLogEvents` semantics | `endTime` verified **inclusive** with a live probe (the drain's window math depends on it) |
+| 14-day PutLogEvents rejection | confirmed live (`tooOldLogEventEndIndex`) — the restore design constraint is real |
+| Retention gate | `PutRetentionPolicy(1 day)` applied through the coverage gate on the real API |
+| Athena | DDL + `count(*)` + `LIKE` query ran against the real archive; partition pruning scanned 1.68 GB / 78.6 MB respectively |
+
+Total experiment cost: ~$2.60 (5 GiB × $0.50 ingest + cents of S3/Athena).
 
 ## No lock-in: your data is plain zstd
 
@@ -251,11 +278,14 @@ WHERE dt = '2026-06-09' AND message LIKE '%ERROR%'
 LIMIT 100;
 ```
 
-**Honesty note**: this DDL is syntactically standard Hive/Athena and the
-underlying objects verifiably decode as plain zstd JSONL (proven against
-LocalStack + the `zstd` CLI in CI), but it has **not yet been executed
-against a real Athena deployment**. If you run it for real before we do,
-an issue report is welcome.
+**Verified on real Athena** (2026-06-10): a per-log-group variant of this
+DDL (table `LOCATION` at the `loggroup=` level, `ADD PARTITION` for the
+`dt=` directory) ran against a real 41-object / 1.6 GiB archive —
+`count(*)` returned exactly the drained record count, and a `LIKE` query
+with partition pruning scanned only 78.6 MB. Note for the `MSCK REPAIR`
+form above: log group names are percent-encoded in the `loggroup=`
+partition values (`%2Faws%2Flambda%2Ffoo`), so prefer explicit
+`ADD PARTITION` or partition projection if your tooling mangles `%`.
 
 ## Restore and the 14-day PutLogEvents constraint
 
@@ -285,19 +315,34 @@ anyone, not just us. S4 Logs handles this honestly:
   possible after a crash, never silent loss). Without it, a crash loses up
   to one flush window per (group, day) buffer. `both` routing keeps a CW
   copy if you need belt and braces.
-- **Drain API cost is not yet measured at scale.** FilterLogEvents is a
-  metered, account-quota'd API; TB-scale initial drains will take time and
-  money we have not yet quantified (planned before any commercial claims —
-  see proposal §10). `--dry-run` reads the same API, so it estimates
-  savings but not drain cost.
-- **E2E coverage is LocalStack-only so far.** Both modes, the read path,
-  idempotent re-drain, the retention gate and sidecar-loss recovery run
-  green against LocalStack (S3 + CloudWatch Logs) in CI; none of it has
-  been pointed at a real AWS account yet (roadmap).
+- **Late-arriving events can be missed by a too-eager drain.** CloudWatch
+  indexes backdated events with a lag we measured at **3–5.5 minutes** (and
+  agents may deliver much later). A window drained before its stragglers
+  arrive gets a manifest, and manifests are skipped on re-runs — so those
+  events never reach the archive. Mitigations: drain data that is at least
+  hours old (the normal archival pattern satisfies this trivially); to
+  repair a suspect window, **delete its manifest and re-drain** — object
+  names are deterministic, so this is safe and was verified live. An
+  `event_id`-based reconcile mode is on the roadmap.
+- **Drain speed is latency-bound, not quota-bound.** A real 5 GiB drain
+  took 94.6 min at `--concurrency 4` with zero throttling and $0 in API
+  charges; FilterLogEvents page latency is the bottleneck, so TB-scale
+  initial drains are a *time* budget (raise `--concurrency`), not a money
+  one.
+- **One unattributed 0.0001% count gap.** In the controlled experiment the
+  archive matched CloudWatch exactly on every cross-check we ran
+  (slice-level FilterLogEvents counts, Athena vs drain totals), but 34 of
+  33,163,647 seeder-counted events (1×10⁻⁶) were never observed in
+  CloudWatch reads. We could not attribute them (seeder accounting vs CW
+  ingestion); recorded here rather than rounded away.
 - **Single account per deployment (P1).** AWS Organizations multi-account
   drain is part of the planned commercial tier, not the OSS core.
 - **Compression numbers above are synthetic** except where explicitly
-  labeled as s4's measured corpus.
+  labeled (s4's real nginx corpus; the real-AWS experiment used synthetic
+  data too and is labeled as such).
+- **Cost Explorer confirmation pending.** The experiment's usage-side
+  numbers are in; the matching AWS bill line items materialize with ~24 h
+  lag and will be attached when available.
 - **Restore to CloudWatch cannot reproduce original timestamps** older than
   14 days (AWS API constraint — see previous section).
 

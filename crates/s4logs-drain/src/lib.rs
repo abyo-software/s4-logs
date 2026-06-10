@@ -47,8 +47,8 @@ pub(crate) mod testutil;
 pub use cw::{AwsCwSource, BackoffConfig, CwError, CwEvent, CwEventPage, CwSource, LogGroupInfo};
 pub use discover::{DiscoverError, GroupSelector, discover_log_groups};
 pub use job::{
-    CW_STORAGE_USD_PER_GIB_MONTH, DrainError, DrainJob, DrainOptions, DrainReport,
-    GroupDrainResult, MultiDrainReport, S3_STORAGE_USD_PER_GIB_MONTH, drain_groups,
+    CW_ASSUMED_GZIP_RATIO, CW_STORAGE_USD_PER_GIB_MONTH, DrainError, DrainJob, DrainOptions,
+    DrainReport, GroupDrainResult, MultiDrainReport, S3_STORAGE_USD_PER_GIB_MONTH, drain_groups,
 };
 pub use manifest::{
     DRAIN_VERSION, MANIFEST_VERSION, Manifest, ManifestError, ManifestObject, ManifestStore,

@@ -209,7 +209,7 @@ fn report_lines(r: &DrainReport) -> Vec<String> {
     }
     lines.push(format!("  objects : {} written", r.objects_written));
     lines.push(format!(
-        "  est. monthly storage: CloudWatch ${:.4} -> S3 ${:.4} (saves ${:.4}/month)",
+        "  est. monthly storage: CloudWatch ${:.4} (gzip-billed, ~4x assumed) -> S3 ${:.4} (saves ${:.4}/month)",
         r.cw_monthly_storage_usd(),
         r.s3_monthly_storage_usd(),
         r.estimated_monthly_savings_usd()
@@ -295,8 +295,9 @@ mod tests {
             "{text}"
         );
         assert!(text.contains("2 dropped outside"), "{text}");
-        // 10 GiB CW ($0.30) vs 1 GiB S3 ($0.023) → saves $0.277.
-        assert!(text.contains("saves $0.2770/month"), "{text}");
+        // 10 GiB raw / 4 gzip-assumed * $0.03 = $0.075 CW vs 1 GiB S3
+        // ($0.023) → saves $0.052.
+        assert!(text.contains("saves $0.0520/month"), "{text}");
     }
 
     #[test]

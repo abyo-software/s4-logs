@@ -13,8 +13,9 @@ use std::collections::BTreeMap;
 use anyhow::{Context, Result};
 use s4logs_core::store::ObjectStore;
 use s4logs_drain::{
-    CW_STORAGE_USD_PER_GIB_MONTH, GroupSelector, Manifest, ManifestStore, ObjectStoreManifestStore,
-    S3_STORAGE_USD_PER_GIB_MONTH, manifest_account_prefix, parse_manifest_key_log_group,
+    CW_ASSUMED_GZIP_RATIO, CW_STORAGE_USD_PER_GIB_MONTH, GroupSelector, Manifest, ManifestStore,
+    ObjectStoreManifestStore, S3_STORAGE_USD_PER_GIB_MONTH, manifest_account_prefix,
+    parse_manifest_key_log_group,
 };
 use serde::Serialize;
 
@@ -107,7 +108,9 @@ fn aggregate_group(log_group: String, manifests: &[Manifest]) -> GroupReport {
 
 /// Derive prices/ratio from the byte sums (shared by groups and the total).
 fn finish_pricing(g: &mut GroupReport) {
-    g.cw_monthly_usd = gib(g.raw_bytes) * CW_STORAGE_USD_PER_GIB_MONTH;
+    // CW bills archived storage on gzip-compressed bytes (pricing footnote),
+    // estimated via CW_ASSUMED_GZIP_RATIO — see s4logs-drain::job.
+    g.cw_monthly_usd = gib(g.raw_bytes) / CW_ASSUMED_GZIP_RATIO * CW_STORAGE_USD_PER_GIB_MONTH;
     g.s3_monthly_usd = gib(g.compressed_bytes) * S3_STORAGE_USD_PER_GIB_MONTH;
     g.est_monthly_savings_usd = g.cw_monthly_usd - g.s3_monthly_usd;
     g.compression_ratio = (g.objects_missing_raw == 0 && g.raw_bytes > 0 && g.compressed_bytes > 0)
@@ -209,7 +212,7 @@ fn group_lines(g: &GroupReport) -> Vec<String> {
         ""
     };
     lines.push(format!(
-        "  est. monthly storage: CloudWatch ${:.4} -> S3 ${:.4} (saves ${:.4}/month){floor}",
+        "  est. monthly storage: CloudWatch ${:.4} (gzip-billed, ~4x assumed) -> S3 ${:.4} (saves ${:.4}/month){floor}",
         g.cw_monthly_usd, g.s3_monthly_usd, g.est_monthly_savings_usd
     ));
     lines
@@ -344,10 +347,11 @@ mod tests {
         assert_eq!(g.coverage_from_ms, Some(DAY0));
         assert_eq!(g.coverage_to_ms, Some(DAY0 + 4 * HOUR));
         assert_eq!(g.coverage_gaps, 1);
-        // 10 GiB CW ($0.30) vs 2 GiB S3 ($0.046) → saves $0.254.
-        assert!((g.cw_monthly_usd - 0.30).abs() < 1e-9);
+        // 10 GiB raw / 4 gzip-assumed * $0.03 = $0.075 CW vs 2 GiB S3
+        // ($0.046) → saves $0.029.
+        assert!((g.cw_monthly_usd - 0.075).abs() < 1e-9);
         assert!((g.s3_monthly_usd - 0.046).abs() < 1e-9);
-        assert!((g.est_monthly_savings_usd - 0.254).abs() < 1e-9);
+        assert!((g.est_monthly_savings_usd - 0.029).abs() < 1e-9);
     }
 
     #[test]
