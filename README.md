@@ -14,9 +14,10 @@
 >
 > **Honest framing**: the "70–90% off the bill" number applies to **Mode B**
 > (bypassing ingest, the dominant cost for most accounts). **Mode A** alone
-> only cuts the *storage* line (by ~90–99%) — the ingest you already paid is
-> gone either way. The break-even table below tells you whether either mode
-> is worth your time.
+> only cuts the *storage* line — by ~50–70% on S3 Standard, ~90% with
+> `--storage-class glacier-ir` — the ingest you already paid is gone either
+> way. The break-even table below tells you whether either mode is worth
+> your time.
 
 S4 Logs is the second product in the [S4 family](https://github.com/abyo-software/s4)
 (S4 does the same thing to your **S3** bill; S4 Logs does it to your
@@ -94,6 +95,12 @@ s4logs drain --log-group /aws/lambda/payments \
 # Archive for real. Re-running is safe (manifested windows are skipped).
 s4logs drain --log-group /aws/lambda/payments \
   --bucket my-archive-bucket --prefix s4logs
+
+# Archive straight to Glacier Instant Retrieval ($0.004/GB·mo, list price
+# as of 2026-06, us-east-1). Applies to data objects only — index sidecars
+# and manifests stay S3 Standard (see Cost model for why).
+s4logs drain --log-group /aws/lambda/payments \
+  --bucket my-archive-bucket --prefix s4logs --storage-class glacier-ir
 
 # Shrink CW retention — only succeeds if every older window is archived.
 s4logs drain --log-group /aws/lambda/payments \
@@ -174,32 +181,80 @@ s4logs restore --log-group /aws/lambda/payments \
 
 ## Cost model
 
-Per-GB economics (AWS list prices, us-east-1). One subtlety that most
-cost write-ups miss, and that we initially got wrong too: **CloudWatch
-bills archived storage on gzip-level-6 compressed bytes**, not raw (AWS
-pricing page footnote). Typical text logs gzip ~3–5×, so the honest
-comparison is CW-gzip vs S3-zstd:
+Per-GB economics (AWS **list prices as of 2026-06, us-east-1** throughout
+this section). One subtlety that most cost write-ups miss, and that we
+initially got wrong too: **CloudWatch bills archived storage on
+gzip-level-6 compressed bytes**, not raw (AWS pricing page footnote).
+Typical text logs gzip ~3–5×, so the honest comparison is CW-gzip vs
+S3-zstd:
+
+### Where the archive lives (`--storage-class`)
+
+Drained data objects can go to any instant-access S3 tier
+(`--storage-class standard | standard-ia | glacier-ir`, default
+`standard`):
+
+| Tier | $/GB·mo (list, 2026-06, us-east-1) | ≈ $/GB-raw·mo at 6.2× zstd |
+|---|---:|---:|
+| CloudWatch Logs storage | $0.03 on gzip-6 bytes | ~$0.006–0.010 (gzip 3–5×) |
+| S3 Standard (default) | $0.023 | ~$0.0037 |
+| S3 Standard-IA | $0.0125 | ~$0.0020 |
+| **S3 Glacier Instant Retrieval** | **$0.004** | **~$0.0007** |
+
+Glacier Instant Retrieval keeps millisecond first-byte latency — it is
+*not* the hours-long restore-request Glacier — so `s4logs grep`,
+`restore` and Athena work unchanged against it. The catches, each stated
+plainly:
+
+- **90-day minimum storage charge.** A GIR object deleted (or
+  transitioned) before day 90 is billed for the remainder of the 90 days
+  anyway. A log archive satisfies this trivially — you drained the data
+  precisely because you intend to keep it for months or years; if you'd
+  delete it inside a quarter, you should be shortening retention instead
+  of archiving.
+- **Retrieval costs $0.03/GB, plus pricier GET requests.** Every data
+  byte read back out of GIR — by grep, restore, or Athena — pays it.
+  This is where the sidecar design earns its keep: the timestamp sidecar
+  prunes frames *before* any data byte is fetched, and the byte-range
+  sidecar turns survivors into Range GETs. In the real-AWS experiment
+  below, a time-pruned query touched **78.6 MB of a 1.6 GiB archive** —
+  about **$0.002** of GIR retrieval instead of ~$0.05 for a full scan.
+  If you grep the archive heavily and broadly, Standard-IA ($0.01/GB
+  retrieval) or Standard may price better; GIR is the
+  write-once-read-rarely default.
+- **128 KiB minimum billable object size.** GIR bills any smaller object
+  as 128 KiB. This is why S4 Logs applies the storage class to **data
+  objects only**: the `.s4index`/`.s4lts` sidecars and window manifests
+  are KiB-scale and read on every query plan, so they always stay S3
+  Standard — they'd cost *more* in GIR and would put retrieval pricing
+  on the hot planning path. Their footprint is a rounding error next to
+  the data.
+
+### The bill, by mode
 
 | | CloudWatch as-is | Mode A (drained) | Mode B (bypassed) |
 |---|---|---|---|
 | ingest | $0.50/GB (raw bytes + 26 B/event) | $0.50/GB (already paid — not recoverable) | **$0 (avoided)** + negligible S3 PUTs |
-| storage | $0.03/GB·mo on gzip-6 bytes ≈ **$0.006–0.010/GB-raw·mo** | S3 $0.023/GB·mo on zstd bytes ≈ **$0.002–0.004/GB-raw·mo** | same |
-| reduction | — | **~50–70% of the storage line**, plus retention shortening removes the CW line entirely for drained data | **~90%+ of the whole bill** (ingest dominates) |
+| storage | $0.03/GB·mo on gzip-6 bytes ≈ **$0.006–0.010/GB-raw·mo** | S3 Standard ≈ **$0.0037/GB-raw·mo**; Glacier IR ≈ **$0.0007/GB-raw·mo** (6.2× zstd) | same |
+| reduction | — | **~50–70% of the storage line** on Standard, **~90%** on Glacier IR; retention shortening then removes the CW line entirely for drained data | **~90%+ of the whole bill** (ingest dominates) |
 
 Worked example, 1 TiB of raw logs: CloudWatch storage ≈ **$7.7/mo** (at
-gzip 4×) → S3 at our measured 6.2× zstd **$3.8/mo**; shrink CW retention
-after draining and the CW line goes to ~0 for the drained range. In Mode B
-the same TiB skips **$512** of one-time ingest — ingest, not storage, is
-where the bill lives.
+gzip 4×) → S3 Standard at our measured 6.2× zstd **$3.8/mo** → Glacier
+Instant Retrieval **$0.66/mo** (~91% off the storage line). Shrink CW
+retention after draining and the CW line goes to ~0 for the drained
+range. In Mode B the same TiB skips **$512** of one-time ingest —
+storage-class tuning moves single dollars; ingest is where the bill
+lives.
 
 **Break-even honesty** (same policy as S4's README): if your CloudWatch
 Logs bill is **under $500/month, the OSS version is all you need** — and
 even that may be more moving parts than your problem deserves. Mode A on
-its own is a storage optimization with real but modest margins; the
-compelling moves are **retention shortening** (Mode A's gate makes it safe)
-and **Mode B ingest avoidance**. Draining itself costs ~$0 in API charges:
-FilterLogEvents has no per-call price (verified on a real 5 GiB drain —
-see below), only time and account quota.
+its own is a storage optimization — ~90% with `glacier-ir`, but of what
+is usually the smaller line; the compelling moves remain **retention
+shortening** (Mode A's gate makes it safe) and **Mode B ingest
+avoidance**. Draining itself costs ~$0 in API charges: FilterLogEvents
+has no per-call price (verified on a real 5 GiB drain — see below), only
+time and account quota.
 
 ### Measured compression (synthetic corpora)
 
@@ -335,6 +390,14 @@ anyone, not just us. S4 Logs handles this honestly:
   33,163,647 seeder-counted events (1×10⁻⁶) were never observed in
   CloudWatch reads. We could not attribute them (seeder accounting vs CW
   ingestion); recorded here rather than rounded away.
+- **Storage class is a per-deployment write-time choice; `report` prices
+  it flat.** `--storage-class` only affects new data objects; archives
+  with mixed classes read fine (grep/restore/Athena are class-agnostic
+  for the instant-access tiers), but `s4logs report` currently prices
+  every archived byte at S3 Standard ($0.023/GB·mo) — it neither prices
+  per-class nor estimates retrieval charges. Per-class pricing in the
+  report is on the roadmap (the storage class is already recorded on
+  each put receipt).
 - **Single account per deployment (P1).** AWS Organizations multi-account
   drain is part of the planned commercial tier, not the OSS core.
 - **Compression numbers above are synthetic** except where explicitly

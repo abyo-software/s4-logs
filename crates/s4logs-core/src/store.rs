@@ -11,7 +11,7 @@
 use aws_sdk_s3::operation::get_object::GetObjectError;
 use aws_sdk_s3::operation::head_object::HeadObjectError;
 use aws_sdk_s3::primitives::ByteStream;
-use aws_sdk_s3::types::ChecksumAlgorithm;
+use aws_sdk_s3::types::{ChecksumAlgorithm, StorageClass};
 use bytes::Bytes;
 use s4_codec::index::{FrameIndex, IndexError, decode_index};
 
@@ -56,6 +56,17 @@ pub struct ObjectStore {
     client: aws_sdk_s3::Client,
     bucket: String,
     prefix: String,
+    /// Storage class for **data objects only** (`put_chunk`'s `.jsonl.zst`).
+    ///
+    /// Sidecars (`.s4index`/`.s4lts`) and everything written via
+    /// [`Self::put_bytes`] directly (drain manifests) always go to S3
+    /// Standard regardless of this setting: they are tiny (KiB-scale) and
+    /// hot (every grep/restore/report reads them), and Glacier Instant
+    /// Retrieval bills a 128 KiB minimum per object plus per-GB retrieval —
+    /// archiving them would cost more, not less. `None` (the default) omits
+    /// the `x-amz-storage-class` header entirely, i.e. the bucket default
+    /// (Standard) applies to data objects too.
+    storage_class: Option<StorageClass>,
 }
 
 impl ObjectStore {
@@ -64,7 +75,22 @@ impl ObjectStore {
             client,
             bucket: bucket.into(),
             prefix: crate::layout::norm_prefix(prefix),
+            storage_class: None,
         }
+    }
+
+    /// Builder-style: set the storage class for data objects (see the field
+    /// doc for why sidecars and manifests are deliberately excluded).
+    /// `None` restores the default (no `x-amz-storage-class` header).
+    #[must_use]
+    pub fn with_storage_class(mut self, storage_class: Option<StorageClass>) -> Self {
+        self.storage_class = storage_class;
+        self
+    }
+
+    /// The configured data-object storage class, if any.
+    pub fn storage_class(&self) -> Option<&StorageClass> {
+        self.storage_class.as_ref()
     }
 
     pub fn bucket(&self) -> &str {
@@ -75,8 +101,27 @@ impl ObjectStore {
         &self.client
     }
 
-    /// PUT with CRC32C checksum; returns the backend ETag.
+    /// PUT with CRC32C checksum; returns the backend ETag. Always S3
+    /// Standard — manifests and sidecars must stay hot and small-object
+    /// friendly (see the `storage_class` field doc). Data objects go
+    /// through [`Self::put_data_bytes`].
     pub async fn put_bytes(&self, key: &str, body: Bytes) -> Result<Option<String>, StoreError> {
+        self.put_object_inner(key, body, None).await
+    }
+
+    /// PUT for **data objects**: like [`Self::put_bytes`] but applies the
+    /// configured storage class (if any).
+    async fn put_data_bytes(&self, key: &str, body: Bytes) -> Result<Option<String>, StoreError> {
+        self.put_object_inner(key, body, self.storage_class.clone())
+            .await
+    }
+
+    async fn put_object_inner(
+        &self,
+        key: &str,
+        body: Bytes,
+        storage_class: Option<StorageClass>,
+    ) -> Result<Option<String>, StoreError> {
         let out = self
             .client
             .put_object()
@@ -85,6 +130,8 @@ impl ObjectStore {
             // DESIGN.md §6: the SDK computes CRC32C over the wire body and
             // S3 verifies it server-side — end-to-end integrity per PUT.
             .checksum_algorithm(ChecksumAlgorithm::Crc32C)
+            // None ⇒ the header is omitted (bucket default applies).
+            .set_storage_class(storage_class)
             .body(ByteStream::from(body))
             .send()
             .await
@@ -264,8 +311,10 @@ impl ChunkSink for ObjectStore {
         let ts_index_key = loc.ts_index_key(&self.prefix);
         // Write-after-data (DESIGN.md §6): a crash between PUTs may leave
         // data without sidecars (recoverable, re-derivable) but never a
-        // sidecar pointing at data that was never acknowledged.
-        let etag = self.put_bytes(&data_key, chunk.body.clone()).await?;
+        // sidecar pointing at data that was never acknowledged. Only the
+        // data object gets the configured storage class; the sidecar
+        // `put_bytes` calls below stay Standard by design.
+        let etag = self.put_data_bytes(&data_key, chunk.body.clone()).await?;
         // Sidecars are stamped with the post-PUT etag + body length before
         // encoding; any sidecar PUT failure surfaces — a half-indexed chunk
         // must fail the drain window, not silently pass.
@@ -279,6 +328,7 @@ impl ChunkSink for ObjectStore {
             etag,
             crc32c: chunk.crc32c,
             body_len: chunk.body.len() as u64,
+            storage_class: self.storage_class.as_ref().map(|sc| sc.as_str().to_owned()),
         })
     }
 }
@@ -504,9 +554,82 @@ mod tests {
         assert_eq!(receipt.etag.as_deref(), Some("\"data-etag\""));
         assert_eq!(receipt.crc32c, chunk.crc32c);
         assert_eq!(receipt.body_len, chunk.body.len() as u64);
+        assert_eq!(receipt.storage_class, None);
         assert_eq!(receipt.data_key, sample_loc().data_key("s4logs"));
         assert_eq!(receipt.index_key, sample_loc().index_key("s4logs"));
         assert_eq!(receipt.ts_index_key, sample_loc().ts_index_key("s4logs"));
+    }
+
+    #[tokio::test]
+    async fn put_chunk_storage_class_applies_to_data_object_only() {
+        let chunk = sample_chunk();
+        // Data PUT must carry GLACIER_IR; both sidecar PUTs must carry no
+        // storage class at all (they stay Standard — 128 KiB minimum
+        // billing would punish KiB-scale hot objects).
+        let put_data = mock!(aws_sdk_s3::Client::put_object)
+            .match_requests(|inp| {
+                inp.key().is_some_and(|k| k.ends_with(".jsonl.zst"))
+                    && inp.storage_class() == Some(&StorageClass::GlacierIr)
+            })
+            .then_output(|| PutObjectOutput::builder().e_tag("\"e\"").build());
+        let put_index = mock!(aws_sdk_s3::Client::put_object)
+            .match_requests(|inp| {
+                inp.key().is_some_and(|k| k.ends_with(".s4index")) && inp.storage_class().is_none()
+            })
+            .then_output(|| PutObjectOutput::builder().build());
+        let put_ts = mock!(aws_sdk_s3::Client::put_object)
+            .match_requests(|inp| {
+                inp.key().is_some_and(|k| k.ends_with(".s4lts")) && inp.storage_class().is_none()
+            })
+            .then_output(|| PutObjectOutput::builder().build());
+        let client = mock_client!(
+            aws_sdk_s3,
+            RuleMode::Sequential,
+            [&put_data, &put_index, &put_ts]
+        );
+        let receipt = store(client)
+            .with_storage_class(Some(StorageClass::GlacierIr))
+            .put_chunk(&sample_loc(), &chunk)
+            .await
+            .unwrap();
+        assert_eq!(put_data.num_calls(), 1);
+        assert_eq!(put_index.num_calls(), 1);
+        assert_eq!(put_ts.num_calls(), 1);
+        assert_eq!(receipt.storage_class.as_deref(), Some("GLACIER_IR"));
+    }
+
+    #[tokio::test]
+    async fn put_chunk_without_storage_class_sends_no_header_anywhere() {
+        let chunk = sample_chunk();
+        // None ⇒ `set_storage_class(None)` ⇒ no x-amz-storage-class on any
+        // of the three PUTs (bucket default applies).
+        let put_any = mock!(aws_sdk_s3::Client::put_object)
+            .match_requests(|inp| inp.storage_class().is_none())
+            .then_output(|| PutObjectOutput::builder().build());
+        let client = mock_client!(aws_sdk_s3, RuleMode::MatchAny, [&put_any]);
+        store(client)
+            .put_chunk(&sample_loc(), &chunk)
+            .await
+            .unwrap();
+        assert_eq!(put_any.num_calls(), 3, "data + .s4index + .s4lts");
+    }
+
+    #[tokio::test]
+    async fn put_bytes_stays_standard_even_when_storage_class_configured() {
+        // Manifests go through put_bytes directly; the configured class
+        // must not leak onto them.
+        let rule = mock!(aws_sdk_s3::Client::put_object)
+            .match_requests(|inp| {
+                inp.key() == Some("s4logs/manifest/m.json") && inp.storage_class().is_none()
+            })
+            .then_output(|| PutObjectOutput::builder().build());
+        let client = mock_client!(aws_sdk_s3, RuleMode::MatchAny, [&rule]);
+        store(client)
+            .with_storage_class(Some(StorageClass::GlacierIr))
+            .put_bytes("s4logs/manifest/m.json", Bytes::from_static(b"{}"))
+            .await
+            .unwrap();
+        assert_eq!(rule.num_calls(), 1);
     }
 
     #[tokio::test]

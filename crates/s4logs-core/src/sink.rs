@@ -39,6 +39,11 @@ pub struct PutReceipt {
     pub etag: Option<String>,
     pub crc32c: u32,
     pub body_len: u64,
+    /// Storage class requested for the **data object** (S3 wire value, e.g.
+    /// `"GLACIER_IR"`). `None` means the bucket default (Standard) — also
+    /// always `None` for MemorySink. Sidecars are always Standard, so this
+    /// describes only the data PUT.
+    pub storage_class: Option<String>,
 }
 
 #[async_trait]
@@ -134,6 +139,7 @@ impl ChunkSink for MemorySink {
             etag: Some(etag),
             crc32c: chunk.crc32c,
             body_len: chunk.body.len() as u64,
+            storage_class: None,
         })
     }
 }
