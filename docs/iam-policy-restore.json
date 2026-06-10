@@ -1,0 +1,38 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "S4LogsRestoreReadArchive",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": "arn:aws:s3:::YOUR_BUCKET/s4logs/*"
+    },
+    {
+      "Sid": "S4LogsRestoreListArchivePrefix",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": "arn:aws:s3:::YOUR_BUCKET",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "s4logs/*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "S4LogsRestoreWriteBackToCloudWatch",
+      "Effect": "Allow",
+      "Action": [
+        "logs:PutLogEvents",
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream"
+      ],
+      "Resource": "arn:aws:logs:*:YOUR_ACCOUNT_ID:log-group:*"
+    }
+  ]
+}

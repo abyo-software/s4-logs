@@ -1,0 +1,17 @@
+# LocalStack for the s4logs-e2e test suite (S3 + CloudWatch Logs).
+# Usage: docker compose up -d && cargo test -p s4logs-e2e -- --ignored --test-threads 1
+# Or simply: ./scripts/e2e.sh
+services:
+  localstack:
+    # Pinned to the v3 community line: the 2026.x "latest" images exit with
+    # code 55 (license activation) unless a LOCALSTACK_AUTH_TOKEN is set.
+    image: localstack/localstack:3
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3,logs
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:4566/_localstack/health"]
+      interval: 2s
+      timeout: 5s
+      retries: 30

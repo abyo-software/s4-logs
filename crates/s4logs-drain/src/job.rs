@@ -1,0 +1,671 @@
+//! DrainJob — Mode A core loop (DESIGN.md §7).
+//!
+//! Unit of work = `(log_group, window)`. Per window: skip if a manifest
+//! already exists (idempotency), page `FilterLogEvents` through a
+//! `ChunkWriter`, rotate to a new object when the uncompressed size reaches
+//! `chunk_target_bytes` (object names `{window_start_ms}-{seq:06}` —
+//! deterministic, so re-running a window overwrites identical content), then
+//! write the manifest. Empty windows still get a manifest (empty `objects`)
+//! so the retention gate can prove coverage.
+//!
+//! `--dry-run` reads CW and *compresses* (for an honest savings estimate)
+//! but writes nothing — no chunks, no manifests.
+
+use std::sync::Arc;
+
+use futures::StreamExt;
+use s4logs_core::chunk::{ChunkConfig, ChunkError, ChunkWriter};
+use s4logs_core::layout::{ChunkLocation, date_from_ts_ms, manifest_key};
+use s4logs_core::record::LogRecord;
+use s4logs_core::sink::{ChunkSink, SinkError};
+use thiserror::Error;
+
+use crate::cw::{CwError, CwSource};
+use crate::manifest::{
+    DRAIN_VERSION, MANIFEST_VERSION, Manifest, ManifestError, ManifestObject, ManifestStore,
+};
+use crate::window::{HOUR_MS, Window, WindowError, windows};
+
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum DrainError {
+    #[error(transparent)]
+    Cw(#[from] CwError),
+    #[error("chunk encode failed")]
+    Chunk(#[from] ChunkError),
+    #[error("chunk store failed")]
+    Sink(#[from] SinkError),
+    #[error(transparent)]
+    Manifest(#[from] ManifestError),
+    #[error(transparent)]
+    Window(#[from] WindowError),
+    #[error("invalid drain options: {0}")]
+    BadOptions(String),
+}
+
+/// Everything `s4logs drain` (wave 2D CLI) configures.
+#[derive(Debug, Clone)]
+pub struct DrainOptions {
+    /// AWS account id (or operator-chosen scope label) for the S3 layout.
+    pub account: String,
+    /// Raw CloudWatch log group name.
+    pub log_group: String,
+    /// Drain range start (epoch ms). `None` → log group creation time.
+    pub from_ms: Option<i64>,
+    /// Drain range end, exclusive (epoch ms). `None` → `now - now_cutoff_ms`.
+    pub to_ms: Option<i64>,
+    /// Safety margin behind `now` when `to_ms` is `None` — CW ingestion
+    /// lags, and draining the current instant would archive a still-filling
+    /// window. Default 15 min.
+    pub now_cutoff_ms: i64,
+    /// Window length (UTC-grid aligned, additionally cut at day boundaries).
+    /// Default 1h.
+    pub window_ms: i64,
+    /// Rotate to a new data object once this much *uncompressed* JSONL
+    /// accumulated. Default 256 MiB.
+    pub chunk_target_bytes: u64,
+    /// Frame size / zstd level for `ChunkWriter`.
+    pub chunk: ChunkConfig,
+    /// Windows processed in parallel. Default 2 (quota-friendly).
+    pub concurrency: usize,
+    /// Read CW, count + compress, write nothing.
+    pub dry_run: bool,
+}
+
+impl DrainOptions {
+    pub fn new(account: impl Into<String>, log_group: impl Into<String>) -> Self {
+        Self {
+            account: account.into(),
+            log_group: log_group.into(),
+            from_ms: None,
+            to_ms: None,
+            now_cutoff_ms: 15 * 60_000,
+            window_ms: HOUR_MS,
+            chunk_target_bytes: 256 << 20,
+            chunk: ChunkConfig::default(),
+            concurrency: 2,
+            dry_run: false,
+        }
+    }
+}
+
+/// Summary for `--dry-run` and final output.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct DrainReport {
+    pub log_group: String,
+    pub dry_run: bool,
+    pub windows_total: u64,
+    /// Windows actually paged through CW (includes empty ones).
+    pub windows_processed: u64,
+    /// Windows skipped because a manifest already existed.
+    pub windows_skipped: u64,
+    /// Processed windows that contained zero events.
+    pub windows_empty: u64,
+    pub records: u64,
+    /// Events CW returned outside the requested window (defensively
+    /// dropped; should be 0 against real AWS).
+    pub events_outside_window: u64,
+    /// Uncompressed JSONL bytes.
+    pub raw_bytes: u64,
+    /// zstd bytes (counted in dry-run too; written only in real runs).
+    pub compressed_bytes: u64,
+    /// Data objects PUT (0 in dry-run).
+    pub objects_written: u64,
+}
+
+/// CW Logs storage price, USD per GiB-month.
+pub const CW_STORAGE_USD_PER_GIB_MONTH: f64 = 0.03;
+/// S3 Standard storage price, USD per GiB-month.
+pub const S3_STORAGE_USD_PER_GIB_MONTH: f64 = 0.023;
+
+fn gib(bytes: u64) -> f64 {
+    bytes as f64 / (1u64 << 30) as f64
+}
+
+impl DrainReport {
+    /// What the drained bytes cost per month if left in CloudWatch.
+    pub fn cw_monthly_storage_usd(&self) -> f64 {
+        gib(self.raw_bytes) * CW_STORAGE_USD_PER_GIB_MONTH
+    }
+
+    /// What the compressed bytes cost per month in S3 Standard.
+    pub fn s3_monthly_storage_usd(&self) -> f64 {
+        gib(self.compressed_bytes) * S3_STORAGE_USD_PER_GIB_MONTH
+    }
+
+    /// Estimated monthly storage saving (CW raw vs S3 compressed).
+    pub fn estimated_monthly_savings_usd(&self) -> f64 {
+        self.cw_monthly_storage_usd() - self.s3_monthly_storage_usd()
+    }
+
+    fn absorb(&mut self, o: WindowOutcome) {
+        if o.skipped {
+            self.windows_skipped += 1;
+            return;
+        }
+        self.windows_processed += 1;
+        if o.records == 0 {
+            self.windows_empty += 1;
+        }
+        self.records += o.records;
+        self.events_outside_window += o.dropped;
+        self.raw_bytes += o.raw_bytes;
+        self.compressed_bytes += o.compressed_bytes;
+        self.objects_written += o.objects_written;
+    }
+}
+
+#[derive(Debug, Default)]
+struct WindowOutcome {
+    skipped: bool,
+    records: u64,
+    dropped: u64,
+    raw_bytes: u64,
+    compressed_bytes: u64,
+    objects_written: u64,
+}
+
+pub(crate) fn now_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
+}
+
+/// Mode A drain for one log group.
+pub struct DrainJob {
+    cw: Arc<dyn CwSource>,
+    sink: Arc<dyn ChunkSink>,
+    manifests: Arc<dyn ManifestStore>,
+    opts: DrainOptions,
+}
+
+impl DrainJob {
+    pub fn new(
+        cw: Arc<dyn CwSource>,
+        sink: Arc<dyn ChunkSink>,
+        manifests: Arc<dyn ManifestStore>,
+        opts: DrainOptions,
+    ) -> Self {
+        Self {
+            cw,
+            sink,
+            manifests,
+            opts,
+        }
+    }
+
+    pub fn options(&self) -> &DrainOptions {
+        &self.opts
+    }
+
+    /// Run the drain. Fails fast on the first window error (windows already
+    /// completed keep their manifests, so a re-run resumes where it left
+    /// off — that is the idempotency story, not partial-failure bookkeeping).
+    pub async fn run(&self) -> Result<DrainReport, DrainError> {
+        if self.opts.chunk_target_bytes == 0 {
+            return Err(DrainError::BadOptions(
+                "chunk_target_bytes must be > 0".into(),
+            ));
+        }
+        let from = match self.opts.from_ms {
+            Some(f) => f,
+            None => {
+                self.cw
+                    .describe_log_group(&self.opts.log_group)
+                    .await?
+                    .creation_time_ms
+            }
+        };
+        let to = match self.opts.to_ms {
+            Some(t) => t,
+            None => now_ms().saturating_sub(self.opts.now_cutoff_ms),
+        };
+        let wins = windows(from, to, self.opts.window_ms)?;
+        let mut report = DrainReport {
+            log_group: self.opts.log_group.clone(),
+            dry_run: self.opts.dry_run,
+            windows_total: wins.len() as u64,
+            ..DrainReport::default()
+        };
+        tracing::info!(
+            log_group = %self.opts.log_group,
+            from_ms = from,
+            to_ms = to,
+            windows = wins.len(),
+            dry_run = self.opts.dry_run,
+            "drain starting"
+        );
+        let mut stream = futures::stream::iter(wins.into_iter().map(|w| self.process_window(w)))
+            .buffer_unordered(self.opts.concurrency.max(1));
+        while let Some(res) = stream.next().await {
+            report.absorb(res?);
+        }
+        Ok(report)
+    }
+
+    async fn process_window(&self, w: Window) -> Result<WindowOutcome, DrainError> {
+        let opts = &self.opts;
+        let mkey = manifest_key(
+            self.sink.key_prefix(),
+            &opts.account,
+            &opts.log_group,
+            w.start_ms,
+            w.end_ms,
+        );
+        if self.manifests.exists(&mkey).await? {
+            tracing::debug!(log_group = %opts.log_group, window_start_ms = w.start_ms, "manifest exists; skipping window");
+            return Ok(WindowOutcome {
+                skipped: true,
+                ..WindowOutcome::default()
+            });
+        }
+
+        // Windows never span UTC days, so the window start fixes the dt=
+        // partition for every event inside it.
+        let date = date_from_ts_ms(w.start_ms);
+        let mut out = WindowOutcome::default();
+        let mut objects: Vec<ManifestObject> = Vec::new();
+        let mut seq: u32 = 0;
+        let mut writer = ChunkWriter::new(opts.chunk.clone());
+        let mut token: Option<String> = None;
+        loop {
+            let page = self
+                .cw
+                .filter_log_events(&opts.log_group, w.start_ms, w.end_ms, token.as_deref())
+                .await?;
+            for ev in page.events {
+                if ev.timestamp < w.start_ms || ev.timestamp >= w.end_ms {
+                    tracing::warn!(
+                        log_group = %opts.log_group,
+                        timestamp = ev.timestamp,
+                        window_start_ms = w.start_ms,
+                        window_end_ms = w.end_ms,
+                        "event outside requested window; dropping (would corrupt dt= partition)"
+                    );
+                    out.dropped += 1;
+                    continue;
+                }
+                writer.push(&LogRecord {
+                    timestamp: ev.timestamp,
+                    stream: ev.log_stream_name,
+                    message: ev.message,
+                    ingestion_time: ev.ingestion_time,
+                    event_id: ev.event_id,
+                })?;
+                if writer.uncompressed_len() >= opts.chunk_target_bytes {
+                    let full = std::mem::replace(&mut writer, ChunkWriter::new(opts.chunk.clone()));
+                    self.flush_chunk(full, &date, w.start_ms, &mut seq, &mut objects, &mut out)
+                        .await?;
+                }
+            }
+            token = page.next_token;
+            if token.is_none() {
+                break;
+            }
+        }
+        self.flush_chunk(writer, &date, w.start_ms, &mut seq, &mut objects, &mut out)
+            .await?;
+
+        if !opts.dry_run {
+            let manifest = Manifest {
+                version: MANIFEST_VERSION,
+                account: opts.account.clone(),
+                log_group: opts.log_group.clone(),
+                window_start_ms: w.start_ms,
+                window_end_ms: w.end_ms,
+                record_count: objects.iter().map(|o| o.record_count).sum(),
+                objects,
+                completed_at_ms: now_ms(),
+                drain_version: DRAIN_VERSION.to_owned(),
+            };
+            self.manifests.put(&mkey, manifest.to_json_bytes()?).await?;
+        }
+        Ok(out)
+    }
+
+    /// Finalize one chunk: count it, and unless dry-run, PUT it and record
+    /// its manifest entry. No-op for an empty writer.
+    async fn flush_chunk(
+        &self,
+        writer: ChunkWriter,
+        date: &str,
+        window_start_ms: i64,
+        seq: &mut u32,
+        objects: &mut Vec<ManifestObject>,
+        out: &mut WindowOutcome,
+    ) -> Result<(), DrainError> {
+        let Some(chunk) = writer.finish()? else {
+            return Ok(());
+        };
+        out.records += chunk.record_count;
+        out.raw_bytes += chunk.uncompressed_bytes;
+        out.compressed_bytes += chunk.body.len() as u64;
+        if !self.opts.dry_run {
+            let loc = ChunkLocation {
+                account: self.opts.account.clone(),
+                log_group: self.opts.log_group.clone(),
+                date: date.to_owned(),
+                name: format!("{window_start_ms}-{seq:06}"),
+            };
+            let receipt = self.sink.put_chunk(&loc, &chunk).await?;
+            objects.push(ManifestObject {
+                data_key: receipt.data_key,
+                etag: receipt.etag,
+                crc32c: receipt.crc32c,
+                body_len: receipt.body_len,
+                record_count: chunk.record_count,
+                min_ts: chunk.min_timestamp,
+                max_ts: chunk.max_timestamp,
+            });
+            out.objects_written += 1;
+        }
+        *seq += 1;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+    use crate::manifest::MemoryManifestStore;
+    use crate::testutil::MockCw;
+    use crate::window::DAY_MS;
+    use bytes::Bytes;
+    use s4logs_core::sink::MemorySink;
+    use std::sync::atomic::Ordering;
+
+    // 2024-06-05T00:00:00Z, an exact UTC day boundary.
+    const DAY0: i64 = 1_717_545_600_000;
+    const ACCT: &str = "123456789012";
+    const GROUP: &str = "/aws/lambda/foo";
+
+    fn job(
+        cw: MockCw,
+        opts: DrainOptions,
+    ) -> (DrainJob, Arc<MemorySink>, Arc<MemoryManifestStore>) {
+        let sink = Arc::new(MemorySink::new("s4logs"));
+        let manifests = Arc::new(MemoryManifestStore::new());
+        let j = DrainJob::new(Arc::new(cw), sink.clone(), manifests.clone(), opts);
+        (j, sink, manifests)
+    }
+
+    fn opts(from: i64, to: i64) -> DrainOptions {
+        DrainOptions {
+            from_ms: Some(from),
+            to_ms: Some(to),
+            ..DrainOptions::new(ACCT, GROUP)
+        }
+    }
+
+    #[tokio::test]
+    async fn pagination_rotation_and_manifest() {
+        // 100 events in one hour window, small pages + small chunk target →
+        // many FilterLogEvents pages, several object rotations.
+        let mut cw = MockCw {
+            page_size: 7,
+            ..MockCw::default()
+        };
+        for i in 0..100i64 {
+            cw.events.push(crate::testutil::event(
+                DAY0 + i * 1000,
+                &format!("padded log line number {i:04} {}", "x".repeat(40)),
+            ));
+        }
+        let mut o = opts(DAY0, DAY0 + HOUR_MS);
+        o.chunk_target_bytes = 4_000; // force rotation
+        let (job, sink, manifests) = job(cw, o);
+        let report = job.run().await.unwrap();
+
+        assert_eq!(report.windows_total, 1);
+        assert_eq!(report.windows_processed, 1);
+        assert_eq!(report.windows_skipped, 0);
+        assert_eq!(report.records, 100);
+        assert!(
+            report.objects_written > 1,
+            "expected chunk rotation, got {report:?}"
+        );
+        assert!(report.raw_bytes > 0 && report.compressed_bytes > 0);
+
+        // Manifest exists at the layout key and is internally consistent.
+        let mkey = manifest_key("s4logs", ACCT, GROUP, DAY0, DAY0 + HOUR_MS);
+        let m = Manifest::from_json_bytes(&manifests.get(&mkey).await.unwrap().unwrap()).unwrap();
+        assert_eq!(m.version, 1);
+        assert_eq!(m.log_group, GROUP);
+        assert_eq!(m.record_count, 100);
+        assert_eq!(m.objects.len() as u64, report.objects_written);
+        assert_eq!(m.objects.iter().map(|o| o.record_count).sum::<u64>(), 100);
+        // Deterministic object names: {window_start_ms}-{seq:06}.
+        for (i, obj) in m.objects.iter().enumerate() {
+            assert!(
+                obj.data_key.contains(&format!("/{DAY0}-{i:06}.jsonl.zst")),
+                "object {i} key {} lacks deterministic name",
+                obj.data_key
+            );
+            assert!(obj.etag.is_some());
+            assert!(obj.body_len > 0);
+            assert!(obj.min_ts >= DAY0 && obj.max_ts < DAY0 + HOUR_MS);
+            // data object + both sidecars were stored
+            assert!(sink.get(&obj.data_key).is_some());
+        }
+        // 3 keys per object (data + .s4index + .s4lts).
+        assert_eq!(sink.keys().len() as u64, 3 * report.objects_written);
+    }
+
+    #[tokio::test]
+    async fn idempotent_skip_when_manifest_exists() {
+        let mut cw = MockCw::default();
+        cw.events
+            .push(crate::testutil::event(DAY0 + 1, "should not be read"));
+        let (job, sink, manifests) = job(cw, opts(DAY0, DAY0 + HOUR_MS));
+        manifests
+            .put(
+                &manifest_key("s4logs", ACCT, GROUP, DAY0, DAY0 + HOUR_MS),
+                Bytes::from_static(b"{}"),
+            )
+            .await
+            .unwrap();
+        let report = job.run().await.unwrap();
+        assert_eq!(report.windows_skipped, 1);
+        assert_eq!(report.windows_processed, 0);
+        assert_eq!(report.records, 0);
+        assert!(sink.keys().is_empty());
+    }
+
+    #[tokio::test]
+    async fn skip_does_not_touch_cw() {
+        let cw = MockCw::default();
+        let calls = cw.filter_calls.clone();
+        let (job, _sink, manifests) = job(cw, opts(DAY0, DAY0 + HOUR_MS));
+        manifests
+            .put(
+                &manifest_key("s4logs", ACCT, GROUP, DAY0, DAY0 + HOUR_MS),
+                Bytes::from_static(b"{}"),
+            )
+            .await
+            .unwrap();
+        job.run().await.unwrap();
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
+    }
+
+    #[tokio::test]
+    async fn empty_window_writes_manifest_with_no_objects() {
+        let (job, sink, manifests) = job(MockCw::default(), opts(DAY0, DAY0 + HOUR_MS));
+        let report = job.run().await.unwrap();
+        assert_eq!(report.windows_processed, 1);
+        assert_eq!(report.windows_empty, 1);
+        assert_eq!(report.objects_written, 0);
+        assert!(sink.keys().is_empty());
+        let mkey = manifest_key("s4logs", ACCT, GROUP, DAY0, DAY0 + HOUR_MS);
+        let m = Manifest::from_json_bytes(&manifests.get(&mkey).await.unwrap().unwrap()).unwrap();
+        assert!(m.objects.is_empty());
+        assert_eq!(m.record_count, 0);
+        assert_eq!(m.window_start_ms, DAY0);
+        assert_eq!(m.window_end_ms, DAY0 + HOUR_MS);
+    }
+
+    #[tokio::test]
+    async fn dry_run_writes_nothing_but_counts_everything() {
+        let mut cw = MockCw::default();
+        for i in 0..50i64 {
+            cw.events.push(crate::testutil::event(
+                DAY0 + i * 1000,
+                &format!("dry run line {i} {}", "y".repeat(60)),
+            ));
+        }
+        let mut o = opts(DAY0, DAY0 + HOUR_MS);
+        o.dry_run = true;
+        o.chunk_target_bytes = 2_000;
+        let (job, sink, manifests) = job(cw, o);
+        let report = job.run().await.unwrap();
+        assert!(report.dry_run);
+        assert_eq!(report.records, 50);
+        assert!(report.raw_bytes > 0);
+        assert!(
+            report.compressed_bytes > 0,
+            "dry-run must still estimate compression"
+        );
+        assert_eq!(report.objects_written, 0);
+        assert!(
+            sink.keys().is_empty(),
+            "dry-run wrote chunks: {:?}",
+            sink.keys()
+        );
+        assert!(manifests.is_empty(), "dry-run wrote manifests");
+        assert!(report.estimated_monthly_savings_usd() > 0.0);
+    }
+
+    #[tokio::test]
+    async fn day_boundary_windows_never_mix_dt_partitions() {
+        // Events at 22:30, 23:15 (day 0) and 00:30, 01:30 (day 1).
+        let mut cw = MockCw::default();
+        for off in [
+            22 * HOUR_MS + 30 * 60_000,
+            23 * HOUR_MS + 15 * 60_000,
+            DAY_MS + 30 * 60_000,
+            DAY_MS + HOUR_MS + 30 * 60_000,
+        ] {
+            cw.events
+                .push(crate::testutil::event(DAY0 + off, "boundary event"));
+        }
+        let from = DAY0 + 22 * HOUR_MS + 30 * 60_000; // mid-window from
+        let to = DAY0 + DAY_MS + 2 * HOUR_MS;
+        let (job, sink, _manifests) = job(cw, opts(from, to));
+        let report = job.run().await.unwrap();
+        assert_eq!(report.windows_total, 4);
+        assert_eq!(report.records, 4);
+        assert_eq!(report.objects_written, 4);
+
+        let data_keys: Vec<String> = sink
+            .keys()
+            .into_iter()
+            .filter(|k| k.ends_with(".jsonl.zst"))
+            .collect();
+        assert_eq!(data_keys.len(), 4);
+        let day0_date = date_from_ts_ms(DAY0);
+        let day1_date = date_from_ts_ms(DAY0 + DAY_MS);
+        for key in &data_keys {
+            let loc = ChunkLocation::parse_data_key("s4logs", key).unwrap();
+            // name prefix = window start; its date must equal the partition.
+            let win_start: i64 = loc.name.split('-').next().unwrap().parse().unwrap();
+            assert_eq!(
+                date_from_ts_ms(win_start),
+                loc.date,
+                "chunk spans dt= partition: {key}"
+            );
+            assert!(loc.date == day0_date || loc.date == day1_date);
+        }
+        assert!(
+            data_keys
+                .iter()
+                .any(|k| k.contains(&format!("dt={day0_date}")))
+        );
+        assert!(
+            data_keys
+                .iter()
+                .any(|k| k.contains(&format!("dt={day1_date}")))
+        );
+    }
+
+    #[tokio::test]
+    async fn throttling_surfaces_as_typed_error() {
+        let cw = MockCw {
+            throttle_remaining: std::sync::Arc::new(std::sync::atomic::AtomicU32::new(u32::MAX)),
+            ..MockCw::default()
+        };
+        let (job, sink, manifests) = job(cw, opts(DAY0, DAY0 + HOUR_MS));
+        let err = job.run().await.unwrap_err();
+        assert!(
+            matches!(err, DrainError::Cw(CwError::Throttled { .. })),
+            "got {err:?}"
+        );
+        assert!(sink.keys().is_empty());
+        assert!(
+            manifests.is_empty(),
+            "no manifest may exist for a failed window"
+        );
+    }
+
+    #[tokio::test]
+    async fn out_of_window_events_are_dropped_not_archived() {
+        let mut cw = MockCw::default();
+        cw.events
+            .push(crate::testutil::event(DAY0 + 1, "in window"));
+        // Mock that misbehaves: returns an event outside the asked range.
+        cw.ignore_range_filter = true;
+        cw.events
+            .push(crate::testutil::event(DAY0 + HOUR_MS + 1, "outside"));
+        let (job, _sink, manifests) = job(cw, opts(DAY0, DAY0 + HOUR_MS));
+        let report = job.run().await.unwrap();
+        assert_eq!(report.records, 1);
+        assert_eq!(report.events_outside_window, 1);
+        let mkey = manifest_key("s4logs", ACCT, GROUP, DAY0, DAY0 + HOUR_MS);
+        let m = Manifest::from_json_bytes(&manifests.get(&mkey).await.unwrap().unwrap()).unwrap();
+        assert_eq!(m.record_count, 1);
+    }
+
+    #[tokio::test]
+    async fn from_defaults_to_log_group_creation_time() {
+        let mut cw = MockCw::default();
+        cw.info.creation_time_ms = DAY0 + 30 * 60_000; // mid-window creation
+        cw.events
+            .push(crate::testutil::event(DAY0 + 45 * 60_000, "early event"));
+        let mut o = opts(0, DAY0 + 2 * HOUR_MS);
+        o.from_ms = None; // → describe_log_group
+        let (job, _sink, manifests) = job(cw, o);
+        let report = job.run().await.unwrap();
+        // creation at 00:30 aligns down to 00:00 → windows [00,01) and [01,02).
+        assert_eq!(report.windows_total, 2);
+        assert_eq!(report.records, 1);
+        assert!(
+            manifests
+                .exists(&manifest_key("s4logs", ACCT, GROUP, DAY0, DAY0 + HOUR_MS))
+                .await
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn savings_math() {
+        let r = DrainReport {
+            raw_bytes: 10 * (1u64 << 30),
+            compressed_bytes: 1u64 << 30,
+            ..DrainReport::default()
+        };
+        assert!((r.cw_monthly_storage_usd() - 0.30).abs() < 1e-9);
+        assert!((r.s3_monthly_storage_usd() - 0.023).abs() < 1e-9);
+        assert!((r.estimated_monthly_savings_usd() - 0.277).abs() < 1e-9);
+    }
+
+    #[tokio::test]
+    async fn rejects_zero_chunk_target() {
+        let mut o = opts(DAY0, DAY0 + HOUR_MS);
+        o.chunk_target_bytes = 0;
+        let (job, _sink, _manifests) = job(MockCw::default(), o);
+        assert!(matches!(
+            job.run().await.unwrap_err(),
+            DrainError::BadOptions(_)
+        ));
+    }
+}

@@ -1,0 +1,50 @@
+name: E2E (LocalStack)
+
+# Manual + nightly: spins a LocalStack service container (S3 + CloudWatch
+# Logs) and runs every #[ignore] suite in s4logs-e2e — the same suites
+# scripts/e2e.sh runs locally.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 18 * * *" # 03:00 JST
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: s4logs-e2e against LocalStack
+    runs-on: ubuntu-latest
+    services:
+      localstack:
+        # Same pin as docker-compose.yml: the 2026.x "latest" images require
+        # a LOCALSTACK_AUTH_TOKEN and exit with code 55 without one.
+        image: localstack/localstack:3
+        ports:
+          - 4566:4566
+        env:
+          SERVICES: s3,logs
+    steps:
+      - uses: actions/checkout@v5
+      - name: Clone s4 sibling (s4-codec path dependency)
+        run: git clone --depth 1 https://github.com/abyo-software/s4 ../s4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Wait for LocalStack health
+        run: |
+          for _ in $(seq 1 60); do
+            if curl -fsS http://localhost:4566/_localstack/health >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "LocalStack did not become healthy in 60s" >&2
+          exit 1
+      - name: Run E2E suites
+        env:
+          S4LOGS_E2E_ENDPOINT: http://localhost:4566
+        run: cargo test -p s4logs-e2e -- --ignored --test-threads 1
