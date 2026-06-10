@@ -35,6 +35,7 @@
 //! ```
 
 pub mod cw;
+pub mod discover;
 pub mod job;
 pub mod manifest;
 pub mod retention;
@@ -44,13 +45,15 @@ pub mod window;
 pub(crate) mod testutil;
 
 pub use cw::{AwsCwSource, BackoffConfig, CwError, CwEvent, CwEventPage, CwSource, LogGroupInfo};
+pub use discover::{DiscoverError, GroupSelector, discover_log_groups};
 pub use job::{
     CW_STORAGE_USD_PER_GIB_MONTH, DrainError, DrainJob, DrainOptions, DrainReport,
-    S3_STORAGE_USD_PER_GIB_MONTH,
+    GroupDrainResult, MultiDrainReport, S3_STORAGE_USD_PER_GIB_MONTH, drain_groups,
 };
 pub use manifest::{
     DRAIN_VERSION, MANIFEST_VERSION, Manifest, ManifestError, ManifestObject, ManifestStore,
-    MemoryManifestStore, ObjectStoreManifestStore, parse_manifest_key_window,
+    MemoryManifestStore, ObjectStoreManifestStore, manifest_account_prefix,
+    parse_manifest_key_log_group, parse_manifest_key_window,
 };
 pub use retention::{RetentionPlan, RetentionRequest, enforce_retention, plan_retention};
 pub use window::{DAY_MS, HOUR_MS, Window, WindowError, windows, windows_covering};

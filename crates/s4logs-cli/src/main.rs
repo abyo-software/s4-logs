@@ -31,6 +31,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
         Cmd::Drain(args) => commands::drain::run(&cli.global, &args).await,
         Cmd::Grep(args) => commands::grep::run(&cli.global, &args).await,
         Cmd::Restore(args) => commands::restore::run(&cli.global, &args).await,
+        Cmd::Report(args) => commands::report::run(&cli.global, &args).await,
         Cmd::Serve(args) => commands::serve::run(&cli.global, &args).await,
         Cmd::Version => {
             println!("s4logs {}", env!("CARGO_PKG_VERSION"));

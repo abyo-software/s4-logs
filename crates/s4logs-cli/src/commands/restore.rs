@@ -18,7 +18,7 @@ use s4logs_core::store::ObjectStore;
 
 use crate::aws;
 use crate::cli::{GlobalArgs, RestoreArgs, UsageError};
-use crate::scan::{ScanStats, scan_log_group};
+use crate::scan::{ScanStats, open_scan, scan_log_group};
 use crate::timearg::fmt_ts;
 
 /// All re-ingested events land in this single stream (documented contract).
@@ -155,11 +155,56 @@ pub fn wrap_message(rec: &LogRecord) -> String {
     .to_string()
 }
 
-/// Split timestamp-sorted events into PutLogEvents-legal index ranges:
-/// ≤ [`MAX_BATCH_EVENTS`] events, ≤ [`MAX_BATCH_BYTES`] total cost
-/// (`len + 26` per event), ≤ [`MAX_BATCH_SPAN_MS`] timestamp span.
-/// Events whose single cost exceeds the byte limit must be filtered out by
-/// the caller beforehand.
+/// Streaming PutLogEvents batcher (DESIGN.md §11.3): feed time-ordered
+/// events one at a time; [`Self::push`] hands back a completed batch
+/// whenever the incoming event would overflow a limit. Memory is bounded by
+/// one in-flight batch (≤ [`MAX_BATCH_EVENTS`] events / ~[`MAX_BATCH_BYTES`]
+/// bytes) — no `Vec<all records>`.
+///
+/// Limits enforced per batch: ≤ [`MAX_BATCH_EVENTS`] events,
+/// ≤ [`MAX_BATCH_BYTES`] total cost (`len + 26` per event),
+/// ≤ [`MAX_BATCH_SPAN_MS`] timestamp span. Callers must feed events in
+/// non-decreasing timestamp order (PutLogEvents requires chronological
+/// batches) and filter out single events whose cost exceeds the byte limit.
+#[derive(Debug, Default)]
+pub struct EventBatcher {
+    batch: Vec<BatchEvent>,
+    bytes: usize,
+}
+
+impl EventBatcher {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add one event; returns the previous batch when `ev` did not fit in it.
+    pub fn push(&mut self, ev: BatchEvent) -> Option<Vec<BatchEvent>> {
+        let cost = event_cost(&ev.message);
+        let full = !self.batch.is_empty()
+            && (self.batch.len() >= MAX_BATCH_EVENTS
+                || self.bytes + cost > MAX_BATCH_BYTES
+                || ev.timestamp.saturating_sub(self.batch[0].timestamp) > MAX_BATCH_SPAN_MS);
+        let out = if full {
+            self.bytes = 0;
+            Some(std::mem::take(&mut self.batch))
+        } else {
+            None
+        };
+        self.bytes += cost;
+        self.batch.push(ev);
+        out
+    }
+
+    /// The final partial batch, if any.
+    pub fn finish(self) -> Option<Vec<BatchEvent>> {
+        (!self.batch.is_empty()).then_some(self.batch)
+    }
+}
+
+/// Reference batching over a materialized slice — kept (test-only) as the
+/// executable spec the streaming [`EventBatcher`] is property-tested
+/// against. Semantics are identical; see `batcher_matches_split_batches`.
+#[cfg(test)]
 pub fn split_batches(events: &[BatchEvent]) -> Vec<std::ops::Range<usize>> {
     let mut out = Vec::new();
     let mut start = 0usize;
@@ -222,6 +267,51 @@ impl Rejections {
     }
 }
 
+/// Sends completed batches: lazily creates the target group/stream before
+/// the first PUT (so an empty restore touches nothing) and accumulates
+/// sent/rejection accounting.
+struct BatchSender<'a> {
+    cw: &'a aws_sdk_cloudwatchlogs::Client,
+    target_group: &'a str,
+    ensured: bool,
+    sent: usize,
+    batches: usize,
+    rejected: Rejections,
+}
+
+impl BatchSender<'_> {
+    async fn send(&mut self, batch: &[BatchEvent]) -> Result<()> {
+        if !self.ensured {
+            ensure_group_and_stream(self.cw, self.target_group).await?;
+            self.ensured = true;
+        }
+        self.batches += 1;
+        let mut wire = Vec::with_capacity(batch.len());
+        for e in batch {
+            wire.push(
+                aws_sdk_cloudwatchlogs::types::InputLogEvent::builder()
+                    .timestamp(e.timestamp)
+                    .message(e.message.clone())
+                    .build()
+                    .context("building InputLogEvent")?,
+            );
+        }
+        let r = put_batch_with_backoff(self.cw, self.target_group, &wire)
+            .await
+            .with_context(|| format!("batch {}", self.batches))?;
+        self.sent += batch.len();
+        if r.total() > 0 {
+            eprintln!(
+                "warning: batch {}: CloudWatch rejected {} too-old, \
+                 {} too-new, {} expired event(s)",
+                self.batches, r.too_old, r.too_new, r.expired
+            );
+        }
+        self.rejected.add(&r);
+        Ok(())
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn restore_to_log_group(
     clients: &aws::AwsClients,
@@ -240,98 +330,77 @@ async fn restore_to_log_group(
              Rejected events are reported per batch and NOT retried."
         );
     }
+    let cutoff = now - CW_INGEST_MAX_AGE_MS;
+    let cw = clients.cwl();
 
-    // Collect + transform. Restore ranges are bounded by the operator, so
-    // materializing the Vec is acceptable in P1 (documented limitation).
-    let mut events: Vec<BatchEvent> = Vec::new();
+    // Streaming re-ingest (DESIGN.md §11.3): the k-way merged scan is
+    // already timestamp-ascending (PutLogEvents requires chronological
+    // batches), so events flow scan → batcher → PutLogEvents with memory
+    // bounded by one in-flight batch + the scan's per-chunk frame buffers —
+    // no `Vec<all records>`.
+    let mut scan = open_scan(store, account, source_group, range, None).await?;
+    let mut batcher = EventBatcher::new();
+    let mut sender = BatchSender {
+        cw: &cw,
+        target_group,
+        ensured: false,
+        sent: 0,
+        batches: 0,
+        rejected: Rejections::default(),
+    };
     let mut oversized = 0u64;
-    let stats = scan_log_group(store, account, source_group, range, None, |rec| {
+    let mut raw_too_old = 0u64;
+    let mut total = 0u64;
+    while let Some(rec) = scan.next().await? {
         let (timestamp, message) = if raw {
-            (rec.timestamp, rec.message.clone())
+            (rec.timestamp, rec.message)
         } else {
-            (now, wrap_message(rec))
+            (now, wrap_message(&rec))
         };
         if event_cost(&message) > MAX_BATCH_BYTES {
             oversized += 1;
             tracing::warn!(
-                timestamp = rec.timestamp,
+                timestamp,
                 len = message.len(),
                 "skipping event larger than the PutLogEvents batch byte limit"
             );
-            return Ok(());
+            continue;
         }
-        events.push(BatchEvent { timestamp, message });
-        Ok(())
-    })
-    .await?;
-
-    if raw {
-        let cutoff = now - CW_INGEST_MAX_AGE_MS;
-        let too_old = events.iter().filter(|e| e.timestamp < cutoff).count();
-        if too_old > 0 {
-            eprintln!(
-                "warning: {too_old} of {} events are older than 14 days and WILL be \
-                 rejected by CloudWatch — drop --raw to wrap them with timestamp=now",
-                events.len()
-            );
+        if raw && timestamp < cutoff {
+            raw_too_old += 1;
+        }
+        total += 1;
+        if let Some(batch) = batcher.push(BatchEvent { timestamp, message }) {
+            sender.send(&batch).await?;
         }
     }
+    if let Some(batch) = batcher.finish() {
+        sender.send(&batch).await?;
+    }
+    let stats = scan.stats();
 
-    if events.is_empty() {
+    if total == 0 {
         println!("restore: no matching events in range; nothing sent");
         return Ok(stats);
     }
-
-    // PutLogEvents requires chronological order within a batch.
-    events.sort_by_key(|e| e.timestamp);
-
-    let cw = clients.cwl();
-    ensure_group_and_stream(&cw, target_group).await?;
-
-    let batches = split_batches(&events);
-    let total_batches = batches.len();
-    let mut sent = 0usize;
-    let mut rejected = Rejections::default();
-    for (i, span) in batches.into_iter().enumerate() {
-        let batch = &events[span];
-        let mut wire = Vec::with_capacity(batch.len());
-        for e in batch {
-            wire.push(
-                aws_sdk_cloudwatchlogs::types::InputLogEvent::builder()
-                    .timestamp(e.timestamp)
-                    .message(e.message.clone())
-                    .build()
-                    .context("building InputLogEvent")?,
-            );
-        }
-        let r = put_batch_with_backoff(&cw, target_group, &wire)
-            .await
-            .with_context(|| format!("batch {}/{total_batches}", i + 1))?;
-        sent += batch.len();
-        if r.total() > 0 {
-            eprintln!(
-                "warning: batch {}/{total_batches}: CloudWatch rejected {} too-old, \
-                 {} too-new, {} expired event(s)",
-                i + 1,
-                r.too_old,
-                r.too_new,
-                r.expired
-            );
-        }
-        rejected.add(&r);
+    if raw_too_old > 0 {
+        eprintln!(
+            "warning: {raw_too_old} of {total} events were older than 14 days and \
+             rejected by CloudWatch — drop --raw to wrap them with timestamp=now"
+        );
     }
-
     println!(
-        "restore: sent {sent} events to log group {target_group:?} stream \
-         {RESTORE_STREAM:?} in {total_batches} batch(es)"
+        "restore: sent {} events to log group {target_group:?} stream \
+         {RESTORE_STREAM:?} in {} batch(es)",
+        sender.sent, sender.batches
     );
-    if rejected.total() > 0 {
+    if sender.rejected.total() > 0 {
         println!(
             "restore: CloudWatch rejected {} event(s): {} too old, {} too new, {} expired",
-            rejected.total(),
-            rejected.too_old,
-            rejected.too_new,
-            rejected.expired
+            sender.rejected.total(),
+            sender.rejected.too_old,
+            sender.rejected.too_new,
+            sender.rejected.expired
         );
     }
     if oversized > 0 {
@@ -520,6 +589,100 @@ mod tests {
             covered = b.end;
         }
         assert_eq!(covered, events.len());
+    }
+
+    // -- streaming batcher (DESIGN.md §11.3) ---------------------------------
+
+    fn drive_batcher(events: &[BatchEvent]) -> Vec<Vec<BatchEvent>> {
+        let mut b = EventBatcher::new();
+        let mut out = Vec::new();
+        for e in events {
+            if let Some(full) = b.push(e.clone()) {
+                out.push(full);
+            }
+        }
+        if let Some(rest) = b.finish() {
+            out.push(rest);
+        }
+        out
+    }
+
+    #[test]
+    fn batcher_respects_limits_and_preserves_order() {
+        let events: Vec<BatchEvent> = (0..2_500i64).map(|i| ev(i * 60_000, 700)).collect();
+        let batches = drive_batcher(&events);
+        assert!(batches.len() > 1, "limits must split this input");
+        let mut flat = Vec::new();
+        for b in &batches {
+            assert!(!b.is_empty());
+            assert!(b.len() <= MAX_BATCH_EVENTS);
+            let bytes: usize = b.iter().map(|e| event_cost(&e.message)).sum();
+            assert!(bytes <= MAX_BATCH_BYTES);
+            let span = b.last().unwrap().timestamp - b[0].timestamp;
+            assert!(span <= MAX_BATCH_SPAN_MS);
+            flat.extend(b.iter().cloned());
+        }
+        assert_eq!(flat, events, "batching must preserve event order exactly");
+    }
+
+    #[test]
+    fn batcher_splits_at_event_count_limit() {
+        let events: Vec<BatchEvent> = (0..(MAX_BATCH_EVENTS as i64 + 1))
+            .map(|i| ev(i, 1))
+            .collect();
+        let batches = drive_batcher(&events);
+        assert_eq!(batches.len(), 2);
+        assert_eq!(batches[0].len(), MAX_BATCH_EVENTS);
+        assert_eq!(batches[1].len(), 1);
+    }
+
+    #[test]
+    fn batcher_empty_and_single() {
+        assert!(drive_batcher(&[]).is_empty());
+        assert_eq!(drive_batcher(&[ev(5, 10)]), vec![vec![ev(5, 10)]]);
+    }
+
+    proptest::proptest! {
+        /// The streaming batcher produces exactly the batches of the
+        /// materialized reference implementation (`split_batches`).
+        #[test]
+        fn batcher_matches_split_batches(
+            spec in proptest::collection::vec(
+                (
+                    proptest::prop_oneof![
+                        proptest::prelude::Just(0i64),
+                        0i64..100,
+                        proptest::prelude::Just(MAX_BATCH_SPAN_MS),
+                        proptest::prelude::Just(MAX_BATCH_SPAN_MS + 1),
+                    ],
+                    proptest::prop_oneof![
+                        proptest::prelude::Just(0usize),
+                        0usize..1_000,
+                        proptest::prelude::Just(MAX_BATCH_BYTES / 2 - EVENT_OVERHEAD_BYTES),
+                        proptest::prelude::Just(MAX_BATCH_BYTES - EVENT_OVERHEAD_BYTES),
+                    ],
+                ),
+                0..50,
+            ),
+        ) {
+            let mut ts = 0i64;
+            let events: Vec<BatchEvent> = spec
+                .into_iter()
+                .map(|(inc, len)| {
+                    ts += inc; // chronological, as the merged scan guarantees
+                    ev(ts, len)
+                })
+                .collect();
+            let expect: Vec<&[BatchEvent]> = split_batches(&events)
+                .into_iter()
+                .map(|r| &events[r])
+                .collect();
+            let got = drive_batcher(&events);
+            proptest::prop_assert_eq!(got.len(), expect.len());
+            for (g, e) in got.iter().zip(expect) {
+                proptest::prop_assert_eq!(g.as_slice(), e);
+            }
+        }
     }
 
     #[test]

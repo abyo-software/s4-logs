@@ -354,6 +354,7 @@ impl DrainJob {
                 etag: receipt.etag,
                 crc32c: receipt.crc32c,
                 body_len: receipt.body_len,
+                raw_bytes: Some(chunk.uncompressed_bytes),
                 record_count: chunk.record_count,
                 min_ts: chunk.min_timestamp,
                 max_ts: chunk.max_timestamp,
@@ -363,6 +364,104 @@ impl DrainJob {
         *seq += 1;
         Ok(())
     }
+}
+
+// ---------------------------------------------------------------------------
+// Multi-group drain (DESIGN.md §11.4)
+// ---------------------------------------------------------------------------
+
+/// One group's outcome inside a multi-group drain.
+#[derive(Debug)]
+pub struct GroupDrainResult {
+    pub log_group: String,
+    pub result: Result<DrainReport, DrainError>,
+}
+
+/// Outcome of [`drain_groups`]: per-group results, name-sorted. Failed
+/// groups are *skipped + reported*, never fatal to their siblings
+/// (DESIGN.md §11.4); the CLI maps `any_failed()` to exit code 1.
+#[derive(Debug, Default)]
+pub struct MultiDrainReport {
+    pub groups: Vec<GroupDrainResult>,
+}
+
+impl MultiDrainReport {
+    pub fn any_failed(&self) -> bool {
+        self.groups.iter().any(|g| g.result.is_err())
+    }
+
+    /// `(log_group, error)` for every failed group, in name order.
+    pub fn failures(&self) -> impl Iterator<Item = (&str, &DrainError)> {
+        self.groups
+            .iter()
+            .filter_map(|g| g.result.as_ref().err().map(|e| (g.log_group.as_str(), e)))
+    }
+
+    pub fn succeeded(&self) -> impl Iterator<Item = &DrainReport> {
+        self.groups.iter().filter_map(|g| g.result.as_ref().ok())
+    }
+
+    /// Sum of all successful per-group reports. `log_group` carries a
+    /// "{ok}/{total} log groups" label; `dry_run` is true when every
+    /// successful run was a dry run.
+    pub fn aggregate(&self) -> DrainReport {
+        let ok = self.groups.iter().filter(|g| g.result.is_ok()).count();
+        let mut agg = DrainReport {
+            log_group: format!("{ok}/{} log groups", self.groups.len()),
+            dry_run: self.succeeded().all(|r| r.dry_run) && ok > 0,
+            ..DrainReport::default()
+        };
+        for r in self.succeeded() {
+            agg.windows_total += r.windows_total;
+            agg.windows_processed += r.windows_processed;
+            agg.windows_skipped += r.windows_skipped;
+            agg.windows_empty += r.windows_empty;
+            agg.records += r.records;
+            agg.events_outside_window += r.events_outside_window;
+            agg.raw_bytes += r.raw_bytes;
+            agg.compressed_bytes += r.compressed_bytes;
+            agg.objects_written += r.objects_written;
+        }
+        agg
+    }
+}
+
+/// Run one independent [`DrainJob`] per discovered group with bounded
+/// group-level parallelism. `base.log_group` is ignored; `base.from_ms`
+/// (when `None`) defaults per group to the discovered creation time — no
+/// extra `DescribeLogGroups` round-trip inside each job. Window-level
+/// parallelism stays `base.concurrency` *per group*, so the total
+/// FilterLogEvents pressure is `group_concurrency × concurrency`.
+pub async fn drain_groups(
+    cw: Arc<dyn CwSource>,
+    sink: Arc<dyn ChunkSink>,
+    manifests: Arc<dyn ManifestStore>,
+    base: &DrainOptions,
+    groups: Vec<(String, crate::cw::LogGroupInfo)>,
+    group_concurrency: usize,
+) -> MultiDrainReport {
+    let jobs = groups.into_iter().map(|(name, info)| {
+        let mut opts = base.clone();
+        opts.log_group = name.clone();
+        opts.from_ms = base.from_ms.or(Some(info.creation_time_ms));
+        let job = DrainJob::new(cw.clone(), sink.clone(), manifests.clone(), opts);
+        async move {
+            let result = job.run().await;
+            if let Err(err) = &result {
+                tracing::error!(log_group = %name, error = %err, "group drain failed; continuing with remaining groups");
+            }
+            GroupDrainResult {
+                log_group: name,
+                result,
+            }
+        }
+    });
+    let mut results: Vec<GroupDrainResult> = futures::stream::iter(jobs)
+        .buffer_unordered(group_concurrency.max(1))
+        .collect()
+        .await;
+    results.sort_by(|a, b| a.log_group.cmp(&b.log_group));
+    MultiDrainReport { groups: results }
 }
 
 #[cfg(test)]
@@ -445,6 +544,10 @@ mod tests {
             );
             assert!(obj.etag.is_some());
             assert!(obj.body_len > 0);
+            assert!(
+                obj.raw_bytes.unwrap() >= obj.body_len,
+                "raw_bytes accounting missing or smaller than compressed"
+            );
             assert!(obj.min_ts >= DAY0 && obj.max_ts < DAY0 + HOUR_MS);
             // data object + both sidecars were stored
             assert!(sink.get(&obj.data_key).is_some());
@@ -667,5 +770,120 @@ mod tests {
             job.run().await.unwrap_err(),
             DrainError::BadOptions(_)
         ));
+    }
+
+    // -- multi-group drain (DESIGN.md §11.4) --------------------------------
+
+    fn group_info(creation_time_ms: i64) -> crate::cw::LogGroupInfo {
+        crate::cw::LogGroupInfo {
+            retention_days: None,
+            stored_bytes: None,
+            creation_time_ms,
+        }
+    }
+
+    #[tokio::test]
+    async fn multi_group_failure_is_skipped_and_aggregated() {
+        let mut cw = MockCw::default();
+        for g in ["/g/a", "/g/bad", "/g/c"] {
+            cw.group_events.insert(
+                g.to_owned(),
+                vec![crate::testutil::event(DAY0 + 1, &format!("event in {g}"))],
+            );
+        }
+        cw.fail_filter_groups.insert("/g/bad".to_owned());
+        let sink = Arc::new(MemorySink::new("s4logs"));
+        let manifests = Arc::new(MemoryManifestStore::new());
+        let base = opts(DAY0, DAY0 + HOUR_MS);
+        let groups = vec![
+            ("/g/c".to_owned(), group_info(DAY0)), // unsorted on purpose
+            ("/g/a".to_owned(), group_info(DAY0)),
+            ("/g/bad".to_owned(), group_info(DAY0)),
+        ];
+        let multi = drain_groups(
+            Arc::new(cw),
+            sink.clone(),
+            manifests.clone(),
+            &base,
+            groups,
+            2,
+        )
+        .await;
+
+        assert!(multi.any_failed());
+        let names: Vec<&str> = multi.groups.iter().map(|g| g.log_group.as_str()).collect();
+        assert_eq!(names, vec!["/g/a", "/g/bad", "/g/c"], "name-sorted output");
+        let failed: Vec<&str> = multi.failures().map(|(g, _)| g).collect();
+        assert_eq!(failed, vec!["/g/bad"]);
+
+        let agg = multi.aggregate();
+        assert_eq!(agg.log_group, "2/3 log groups");
+        assert_eq!(agg.records, 2, "only successful groups aggregate");
+        assert_eq!(agg.windows_processed, 2);
+        assert_eq!(agg.objects_written, 2);
+
+        // Successful groups have manifests; the failed one has none.
+        assert!(
+            manifests
+                .exists(&manifest_key("s4logs", ACCT, "/g/a", DAY0, DAY0 + HOUR_MS))
+                .await
+                .unwrap()
+        );
+        assert!(
+            manifests
+                .exists(&manifest_key("s4logs", ACCT, "/g/c", DAY0, DAY0 + HOUR_MS))
+                .await
+                .unwrap()
+        );
+        assert!(
+            !manifests
+                .exists(&manifest_key(
+                    "s4logs",
+                    ACCT,
+                    "/g/bad",
+                    DAY0,
+                    DAY0 + HOUR_MS
+                ))
+                .await
+                .unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn multi_group_defaults_from_to_discovered_creation_time() {
+        // No --from: each group must start at its own creation time without
+        // re-describing (MockCw's describe fallback would give 0 → a huge
+        // window count, so windows_total == 2 proves the info was used).
+        let cw = MockCw::default();
+        let sink = Arc::new(MemorySink::new("s4logs"));
+        let manifests = Arc::new(MemoryManifestStore::new());
+        let mut base = opts(0, DAY0 + 2 * HOUR_MS);
+        base.from_ms = None;
+        let multi = drain_groups(
+            Arc::new(cw),
+            sink,
+            manifests,
+            &base,
+            vec![("/g".to_owned(), group_info(DAY0 + 30 * 60_000))],
+            1,
+        )
+        .await;
+        assert!(!multi.any_failed());
+        let report = &multi.groups[0].result.as_ref().unwrap();
+        assert_eq!(report.windows_total, 2);
+    }
+
+    #[test]
+    fn multi_report_aggregate_when_everything_failed() {
+        let multi = MultiDrainReport {
+            groups: vec![GroupDrainResult {
+                log_group: "/g".into(),
+                result: Err(DrainError::BadOptions("x".into())),
+            }],
+        };
+        let agg = multi.aggregate();
+        assert_eq!(agg.log_group, "0/1 log groups");
+        assert!(!agg.dry_run);
+        assert_eq!(agg.records, 0);
     }
 }

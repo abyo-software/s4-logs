@@ -36,6 +36,13 @@ pub struct ManifestObject {
     pub crc32c: u32,
     /// Compressed body length, bytes.
     pub body_len: u64,
+    /// Uncompressed JSONL bytes in the object. Optional + skipped when
+    /// absent so the addition is byte-compatible both ways: manifests
+    /// written before wave 3G decode to `None`, and old readers ignore the
+    /// new field. `s4logs report` prices the CloudWatch side from this;
+    /// objects without it are reported as "raw size unknown".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raw_bytes: Option<u64>,
     pub record_count: u64,
     /// Min/max event timestamp in the object, epoch ms.
     pub min_ts: i64,
@@ -106,6 +113,27 @@ pub fn parse_manifest_key_window(key: &str) -> Option<Window> {
         start_ms: s.parse().ok()?,
         end_ms: e.parse().ok()?,
     })
+}
+
+/// Manifest prefix covering every log group of one account
+/// (`{prefix}manifest/account={acct}/`) — `s4logs report` lists this once
+/// and filters by [`crate::discover::GroupSelector`] instead of touching
+/// CloudWatch.
+pub fn manifest_account_prefix(prefix: &str, account: &str) -> String {
+    format!(
+        "{}{}/account={}/",
+        s4logs_core::layout::norm_prefix(prefix),
+        s4logs_core::layout::MANIFEST_SEG,
+        account
+    )
+}
+
+/// Raw (unsanitized) log group name embedded in a manifest key, or `None`
+/// for keys that don't carry a `loggroup=` segment.
+pub fn parse_manifest_key_log_group(key: &str) -> Option<String> {
+    key.split('/')
+        .find_map(|seg| seg.strip_prefix("loggroup="))
+        .and_then(s4logs_core::layout::unsanitize_log_group)
 }
 
 /// Object-store operations the drain needs beyond `ChunkSink`: manifest
@@ -262,6 +290,7 @@ mod tests {
                 etag: Some("\"abc\"".into()),
                 crc32c: 305_419_896,
                 body_len: 1024,
+                raw_bytes: Some(8192),
                 record_count: 10,
                 min_ts: 1_717_545_600_001,
                 max_ts: 1_717_549_199_999,
@@ -278,8 +307,19 @@ mod tests {
         let json = String::from_utf8(sample().to_json_bytes().unwrap().to_vec()).unwrap();
         assert_eq!(
             json,
-            r#"{"version":1,"account":"123456789012","log_group":"/aws/lambda/foo","window_start_ms":1717545600000,"window_end_ms":1717549200000,"objects":[{"data_key":"s4logs/data/account=123456789012/loggroup=%2Faws%2Flambda%2Ffoo/dt=2024-06-05/1717545600000-000000.jsonl.zst","etag":"\"abc\"","crc32c":305419896,"body_len":1024,"record_count":10,"min_ts":1717545600001,"max_ts":1717549199999}],"record_count":10,"completed_at_ms":1717550000000,"drain_version":"test"}"#
+            r#"{"version":1,"account":"123456789012","log_group":"/aws/lambda/foo","window_start_ms":1717545600000,"window_end_ms":1717549200000,"objects":[{"data_key":"s4logs/data/account=123456789012/loggroup=%2Faws%2Flambda%2Ffoo/dt=2024-06-05/1717545600000-000000.jsonl.zst","etag":"\"abc\"","crc32c":305419896,"body_len":1024,"raw_bytes":8192,"record_count":10,"min_ts":1717545600001,"max_ts":1717549199999}],"record_count":10,"completed_at_ms":1717550000000,"drain_version":"test"}"#
         );
+    }
+
+    /// Pre-wave-3G manifests have no `raw_bytes`; they must still decode
+    /// (to `None`) and re-encode without inventing the field.
+    #[test]
+    fn manifest_without_raw_bytes_still_decodes() {
+        let legacy = r#"{"version":1,"account":"a","log_group":"/g","window_start_ms":0,"window_end_ms":1,"objects":[{"data_key":"k","etag":null,"crc32c":1,"body_len":2,"record_count":3,"min_ts":0,"max_ts":0}],"record_count":3,"completed_at_ms":9,"drain_version":"old"}"#;
+        let m = Manifest::from_json_bytes(legacy.as_bytes()).unwrap();
+        assert_eq!(m.objects[0].raw_bytes, None);
+        let re = String::from_utf8(m.to_json_bytes().unwrap().to_vec()).unwrap();
+        assert!(!re.contains("raw_bytes"), "None must stay omitted: {re}");
     }
 
     #[test]

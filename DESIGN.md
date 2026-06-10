@@ -95,7 +95,9 @@ per frame: min_ts i64 LE | max_ts i64 LE        (16 B/frame)
   object (`{window_start_ms}-{seq:06}`) を上書きしても内容は決定的なので安全。
 - manifest JSON (version=1): account, log_group (raw), window_start_ms,
   window_end_ms, objects[{data_key, etag, crc32c, body_len, record_count,
-  min_ts, max_ts}], record_count, completed_at_ms, drain_version。
+  min_ts, max_ts, raw_bytes?}], record_count, completed_at_ms, drain_version。
+  `raw_bytes` (非圧縮 byte 数) は wave 3G 追記の optional field — 旧 manifest は
+  None として読め、`s4logs report` は欠損分を "[lower bound]" 表示で扱う。
 - `--dry-run`: API 読み取りのみで書き込みゼロ、削減見積りを表示。
 - CW client は trait (`CwSource`) で抽象化し、unit test は mock。
 

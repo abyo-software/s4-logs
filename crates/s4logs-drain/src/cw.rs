@@ -87,6 +87,15 @@ pub trait CwSource: Send + Sync {
 
     async fn describe_log_group(&self, log_group: &str) -> Result<LogGroupInfo, CwError>;
 
+    /// Every log group in the account (DESIGN.md §11.4), optionally narrowed
+    /// server-side by a name prefix, paginated to exhaustion. Listing entries
+    /// without a name or creation time are skipped with a warning — one
+    /// malformed entry must not kill a multi-group drain.
+    async fn list_log_groups(
+        &self,
+        prefix_hint: Option<&str>,
+    ) -> Result<Vec<(String, LogGroupInfo)>, CwError>;
+
     async fn put_retention_policy(
         &self,
         log_group: &str,
@@ -322,6 +331,56 @@ impl CwSource for AwsCwSource {
         }
     }
 
+    async fn list_log_groups(
+        &self,
+        prefix_hint: Option<&str>,
+    ) -> Result<Vec<(String, LogGroupInfo)>, CwError> {
+        // Backoff key: the hint when present, "*" for the full enumeration —
+        // distinct keys keep the deterministic jitter desynchronized across
+        // concurrent listings.
+        let label = prefix_hint.unwrap_or("*");
+        let mut out = Vec::new();
+        let mut token: Option<String> = None;
+        loop {
+            let tok = token.clone();
+            let resp = with_backoff(&self.backoff, "DescribeLogGroups", label, || {
+                let req = self
+                    .client
+                    .describe_log_groups()
+                    .set_log_group_name_prefix(prefix_hint.map(str::to_owned))
+                    .set_next_token(tok.clone());
+                async move { req.send().await.map_err(classify) }
+            })
+            .await?;
+            for lg in resp.log_groups.unwrap_or_default() {
+                let Some(name) = lg.log_group_name else {
+                    tracing::warn!("DescribeLogGroups returned a group without a name; skipping");
+                    continue;
+                };
+                let Some(creation_time_ms) = lg.creation_time else {
+                    tracing::warn!(
+                        log_group = %name,
+                        "DescribeLogGroups returned a group without creation_time; skipping"
+                    );
+                    continue;
+                };
+                out.push((
+                    name,
+                    LogGroupInfo {
+                        retention_days: lg.retention_in_days,
+                        stored_bytes: lg.stored_bytes,
+                        creation_time_ms,
+                    },
+                ));
+            }
+            token = resp.next_token;
+            if token.is_none() {
+                break;
+            }
+        }
+        Ok(out)
+    }
+
     async fn put_retention_policy(
         &self,
         log_group: &str,
@@ -399,6 +458,75 @@ mod tests {
         .await;
         assert!(matches!(res.unwrap_err(), CwError::Api { .. }));
         assert_eq!(calls.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn list_log_groups_paginates_and_skips_malformed_entries() {
+        use aws_sdk_cloudwatchlogs::operation::describe_log_groups::DescribeLogGroupsOutput;
+        use aws_sdk_cloudwatchlogs::types::LogGroup;
+        use aws_smithy_mocks::{RuleMode, mock, mock_client};
+
+        let page1 = mock!(aws_sdk_cloudwatchlogs::Client::describe_log_groups)
+            .match_requests(|inp| {
+                inp.log_group_name_prefix() == Some("/aws/") && inp.next_token().is_none()
+            })
+            .then_output(|| {
+                DescribeLogGroupsOutput::builder()
+                    .log_groups(
+                        LogGroup::builder()
+                            .log_group_name("/aws/lambda/a")
+                            .creation_time(11)
+                            .retention_in_days(30)
+                            .stored_bytes(1024)
+                            .build(),
+                    )
+                    // No creation_time — must be skipped, not fatal.
+                    .log_groups(LogGroup::builder().log_group_name("/aws/broken").build())
+                    .next_token("tok-1")
+                    .build()
+            });
+        let page2 = mock!(aws_sdk_cloudwatchlogs::Client::describe_log_groups)
+            .match_requests(|inp| inp.next_token() == Some("tok-1"))
+            .then_output(|| {
+                DescribeLogGroupsOutput::builder()
+                    .log_groups(
+                        LogGroup::builder()
+                            .log_group_name("/aws/lambda/b")
+                            .creation_time(22)
+                            .build(),
+                    )
+                    .build()
+            });
+        let client = mock_client!(
+            aws_sdk_cloudwatchlogs,
+            RuleMode::Sequential,
+            [&page1, &page2]
+        );
+        let src = AwsCwSource::new(client);
+        let groups = src.list_log_groups(Some("/aws/")).await.unwrap();
+        assert_eq!(
+            groups,
+            vec![
+                (
+                    "/aws/lambda/a".to_owned(),
+                    LogGroupInfo {
+                        retention_days: Some(30),
+                        stored_bytes: Some(1024),
+                        creation_time_ms: 11,
+                    }
+                ),
+                (
+                    "/aws/lambda/b".to_owned(),
+                    LogGroupInfo {
+                        retention_days: None,
+                        stored_bytes: None,
+                        creation_time_ms: 22,
+                    }
+                ),
+            ]
+        );
+        assert_eq!(page1.num_calls(), 1);
+        assert_eq!(page2.num_calls(), 1);
     }
 
     #[test]

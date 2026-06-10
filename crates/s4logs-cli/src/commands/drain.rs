@@ -1,13 +1,16 @@
-//! `s4logs drain` — Mode A wiring (DESIGN.md §7, §9): DrainJob + the
-//! fail-closed retention gate, with a human-readable report.
+//! `s4logs drain` — Mode A wiring (DESIGN.md §7, §9, §11.4): glob/--all
+//! group discovery, one independent DrainJob per group (failures skip +
+//! aggregate, exit 1), the fail-closed retention gate per successful group,
+//! and human-readable reports.
 
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use s4logs_core::store::ObjectStore;
 use s4logs_drain::{
-    AwsCwSource, CwSource, DrainJob, DrainOptions, DrainReport, ObjectStoreManifestStore,
-    RetentionPlan, RetentionRequest, enforce_retention,
+    AwsCwSource, DrainOptions, DrainReport, GroupSelector, LogGroupInfo, MultiDrainReport,
+    ObjectStoreManifestStore, RetentionPlan, RetentionRequest, discover_log_groups, drain_groups,
+    enforce_retention,
 };
 
 use crate::aws;
@@ -21,6 +24,17 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
+fn selector(args: &DrainArgs) -> Result<GroupSelector> {
+    if args.all {
+        return Ok(GroupSelector::All);
+    }
+    let Some(pattern) = &args.log_group else {
+        // clap's ArgGroup makes this unreachable; typed error just in case.
+        return Err(UsageError("one of --log-group / --all is required".into()).into());
+    };
+    GroupSelector::parse(pattern).map_err(|e| UsageError(format!("{e:#}")).into())
+}
+
 pub async fn run(global: &GlobalArgs, args: &DrainArgs) -> Result<()> {
     if let (Some(f), Some(t)) = (args.from, args.to)
         && f >= t
@@ -32,6 +46,7 @@ pub async fn run(global: &GlobalArgs, args: &DrainArgs) -> Result<()> {
         ))
         .into());
     }
+    let selector = selector(args)?;
     let bucket = global.require_bucket()?;
     let account = global.require_account()?;
 
@@ -41,50 +56,119 @@ pub async fn run(global: &GlobalArgs, args: &DrainArgs) -> Result<()> {
     let sink = Arc::new(store.clone());
     let manifests = Arc::new(ObjectStoreManifestStore::new(store));
 
-    let mut opts = DrainOptions::new(account.clone(), args.log_group.clone());
-    opts.from_ms = args.from;
-    opts.to_ms = args.to;
-    opts.window_ms = args.window;
-    opts.chunk_target_bytes = args.chunk_target;
-    opts.concurrency = args.concurrency;
-    opts.dry_run = args.dry_run;
-    let window_ms = opts.window_ms;
-
-    let report = DrainJob::new(cw.clone(), sink, manifests.clone(), opts)
-        .run()
+    let groups = discover_log_groups(&*cw, &selector)
         .await
-        .context("drain failed")?;
-    for line in report_lines(&report) {
+        .context("discovering log groups")?;
+    if groups.is_empty() {
+        return Err(UsageError(format!("no log groups match {}", selector.describe())).into());
+    }
+    if groups.len() > 1 {
+        tracing::info!(
+            groups = groups.len(),
+            group_concurrency = args.group_concurrency,
+            "draining multiple log groups"
+        );
+    }
+
+    let mut base = DrainOptions::new(account.clone(), String::new());
+    base.from_ms = args.from;
+    base.to_ms = args.to;
+    base.window_ms = args.window;
+    base.chunk_target_bytes = args.chunk_target;
+    base.concurrency = args.concurrency;
+    base.dry_run = args.dry_run;
+    let window_ms = base.window_ms;
+
+    let multi = drain_groups(
+        cw.clone(),
+        sink,
+        manifests.clone(),
+        &base,
+        groups.clone(),
+        args.group_concurrency,
+    )
+    .await;
+
+    for g in &multi.groups {
+        match &g.result {
+            Ok(report) => {
+                for line in report_lines(report) {
+                    println!("{line}");
+                }
+            }
+            Err(err) => println!("Drain FAILED for {:?}: {err:#}", g.log_group),
+        }
+    }
+    for line in aggregate_lines(&multi) {
         println!("{line}");
     }
 
     if let Some(retention_days) = args.retention_days {
-        // Coverage must start at the log group creation time (DESIGN.md §6
-        // step 4) — anything older than that cannot hold events.
-        let info = cw
-            .describe_log_group(&args.log_group)
-            .await
-            .context("DescribeLogGroups for retention coverage")?;
         let apply = args.apply_retention && !args.dry_run;
         if args.apply_retention && args.dry_run {
             tracing::warn!("--dry-run: retention stays report-only despite --apply-retention");
         }
-        let req = RetentionRequest {
-            account,
-            log_group: args.log_group.clone(),
-            retention_days,
-            coverage_from_ms: info.creation_time_ms,
-            now_ms: now_ms(),
-            window_ms,
-        };
-        let plan = enforce_retention(&*cw, &*manifests, &global.prefix, &req, apply)
-            .await
-            .context("retention gate")?;
-        for line in retention_lines(&plan, apply) {
-            println!("{line}");
+        let infos: std::collections::HashMap<&str, &LogGroupInfo> =
+            groups.iter().map(|(n, i)| (n.as_str(), i)).collect();
+        for g in &multi.groups {
+            if g.result.is_err() {
+                println!(
+                    "Retention gate for {:?}: skipped (drain failed)",
+                    g.log_group
+                );
+                continue;
+            }
+            // Coverage must start at the log group creation time (DESIGN.md
+            // §6 step 4) — anything older than that cannot hold events. The
+            // discovery info already carries it; no extra DescribeLogGroups.
+            let Some(info) = infos.get(g.log_group.as_str()) else {
+                continue; // unreachable: drain_groups preserves the name set
+            };
+            let req = RetentionRequest {
+                account: account.clone(),
+                log_group: g.log_group.clone(),
+                retention_days,
+                coverage_from_ms: info.creation_time_ms,
+                now_ms: now_ms(),
+                window_ms,
+            };
+            let plan = enforce_retention(&*cw, &*manifests, &global.prefix, &req, apply)
+                .await
+                .with_context(|| format!("retention gate for {:?}", g.log_group))?;
+            for line in retention_lines(&plan, apply) {
+                println!("{line}");
+            }
         }
     }
+
+    if multi.any_failed() {
+        let failed: Vec<&str> = multi.failures().map(|(g, _)| g).collect();
+        anyhow::bail!(
+            "{} of {} log group(s) failed: {}",
+            failed.len(),
+            multi.groups.len(),
+            failed.join(", ")
+        );
+    }
     Ok(())
+}
+
+/// Aggregate footer for multi-group drains (pure; empty for single-group
+/// runs, whose per-group report already says everything).
+fn aggregate_lines(multi: &MultiDrainReport) -> Vec<String> {
+    if multi.groups.len() <= 1 {
+        return Vec::new();
+    }
+    let mut lines = report_lines(&multi.aggregate());
+    let failed: Vec<&str> = multi.failures().map(|(g, _)| g).collect();
+    if !failed.is_empty() {
+        lines.push(format!(
+            "  FAILED groups ({}): {}",
+            failed.len(),
+            failed.join(", ")
+        ));
+    }
+    lines
 }
 
 /// Pure report rendering (unit-tested without AWS).
@@ -253,6 +337,42 @@ mod tests {
             text.contains("2024-06-04T23:00:00.000Z .. 2024-06-05T00:00:00.000Z"),
             "{text}"
         );
+    }
+
+    #[test]
+    fn aggregate_lines_only_for_multi_group_runs() {
+        use s4logs_drain::{DrainError, GroupDrainResult};
+        let ok = |g: &str, records: u64| GroupDrainResult {
+            log_group: g.into(),
+            result: Ok(DrainReport {
+                log_group: g.into(),
+                records,
+                windows_total: 1,
+                windows_processed: 1,
+                ..DrainReport::default()
+            }),
+        };
+        let single = MultiDrainReport {
+            groups: vec![ok("/g", 5)],
+        };
+        assert!(
+            aggregate_lines(&single).is_empty(),
+            "single group needs no aggregate footer"
+        );
+        let multi = MultiDrainReport {
+            groups: vec![
+                ok("/a", 5),
+                GroupDrainResult {
+                    log_group: "/bad".into(),
+                    result: Err(DrainError::BadOptions("boom".into())),
+                },
+                ok("/c", 7),
+            ],
+        };
+        let text = aggregate_lines(&multi).join("\n");
+        assert!(text.contains("2/3 log groups"), "{text}");
+        assert!(text.contains("records : 12"), "{text}");
+        assert!(text.contains("FAILED groups (1): /bad"), "{text}");
     }
 
     #[test]

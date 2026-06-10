@@ -106,14 +106,19 @@ pub enum GrepOutput {
 
 #[derive(Debug, Subcommand)]
 pub enum Cmd {
-    /// Archive a CloudWatch log group into S3 (Mode A), optionally gating a
+    /// Archive CloudWatch log groups into S3 (Mode A), optionally gating a
     /// retention shortening behind manifest coverage
     Drain(DrainArgs),
     /// Regex-search archived records over a time range (sidecar-pruned
-    /// Range GETs — never downloads whole objects unless sidecars are gone)
+    /// Range GETs — never downloads whole objects unless sidecars are gone).
+    /// Output is timestamp-ascending across all objects
     Grep(GrepArgs),
     /// Pull archived records back out: stdout, file, or CloudWatch re-ingest
     Restore(RestoreArgs),
+    /// Summarize drain manifests: archived records/bytes, estimated monthly
+    /// savings, window coverage. Reads manifests only — zero CloudWatch API
+    /// calls, zero S3 data-object reads
+    Report(ReportArgs),
     /// Run the PutLogEvents-compatible gateway (Mode B)
     Serve(ServeArgs),
     /// Print the version
@@ -121,10 +126,22 @@ pub enum Cmd {
 }
 
 #[derive(Debug, Args)]
+#[command(group = clap::ArgGroup::new("groups").required(true).multiple(false))]
 pub struct DrainArgs {
-    /// CloudWatch log group to drain
-    #[arg(long)]
-    pub log_group: String,
+    /// CloudWatch log group to drain — an exact name, or a glob selecting
+    /// several groups (globset syntax, e.g. "/aws/lambda/payments-*"; same
+    /// semantics as the gateway routing globs)
+    #[arg(long, group = "groups")]
+    pub log_group: Option<String>,
+
+    /// Drain every log group in the account (DescribeLogGroups enumeration)
+    #[arg(long, group = "groups")]
+    pub all: bool,
+
+    /// Log groups drained in parallel. Each group still runs --concurrency
+    /// windows, so total FilterLogEvents pressure is the product
+    #[arg(long, default_value_t = 1)]
+    pub group_concurrency: usize,
 
     /// Range start, inclusive (RFC3339 or epoch ms). Default: log group
     /// creation time
@@ -227,6 +244,33 @@ pub struct RestoreArgs {
     // --to-log-group". `restore::run` double-checks at runtime.
     #[arg(long, conflicts_with_all = ["to_stdout", "to_file"])]
     pub raw: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum ReportOutput {
+    /// Human-readable per-group summary
+    Table,
+    /// Machine-readable JSON document
+    Json,
+}
+
+/// `s4logs report` reads **drain manifests only**: no CloudWatch API calls,
+/// no S3 data-object reads — one LIST of the account's manifest prefix plus
+/// one GET per manifest JSON.
+#[derive(Debug, Args)]
+#[command(group = clap::ArgGroup::new("groups").required(true).multiple(false))]
+pub struct ReportArgs {
+    /// Log group to report on — exact name or glob (globset syntax)
+    #[arg(long, group = "groups")]
+    pub log_group: Option<String>,
+
+    /// Report on every log group with manifests under the account prefix
+    #[arg(long, group = "groups")]
+    pub all: bool,
+
+    /// Output format
+    #[arg(long, value_enum, default_value_t = ReportOutput::Table)]
+    pub output: ReportOutput,
 }
 
 #[derive(Debug, Args)]
@@ -335,6 +379,65 @@ mod tests {
             "--apply-retention",
         ];
         assert!(Cli::try_parse_from(good).is_ok());
+    }
+
+    #[test]
+    fn drain_requires_exactly_one_of_log_group_or_all() {
+        assert!(
+            Cli::try_parse_from(["s4logs", "drain"]).is_err(),
+            "a group selector is required"
+        );
+        assert!(
+            Cli::try_parse_from(["s4logs", "drain", "--log-group", "/g", "--all"]).is_err(),
+            "--log-group and --all are exclusive"
+        );
+        let glob = Cli::try_parse_from([
+            "s4logs",
+            "drain",
+            "--log-group",
+            "/aws/lambda/*",
+            "--group-concurrency",
+            "3",
+        ])
+        .unwrap();
+        match glob.cmd {
+            Cmd::Drain(d) => {
+                assert_eq!(d.log_group.as_deref(), Some("/aws/lambda/*"));
+                assert!(!d.all);
+                assert_eq!(d.group_concurrency, 3);
+            }
+            other => panic!("expected drain, got {other:?}"),
+        }
+        let all = Cli::try_parse_from(["s4logs", "drain", "--all"]).unwrap();
+        match all.cmd {
+            Cmd::Drain(d) => {
+                assert!(d.all);
+                assert_eq!(d.group_concurrency, 1, "sequential by default");
+            }
+            other => panic!("expected drain, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn report_requires_exactly_one_of_log_group_or_all() {
+        assert!(Cli::try_parse_from(["s4logs", "report"]).is_err());
+        assert!(Cli::try_parse_from(["s4logs", "report", "--log-group", "/g", "--all"]).is_err());
+        let cli = Cli::try_parse_from(["s4logs", "report", "--all", "--output", "json"]).unwrap();
+        match cli.cmd {
+            Cmd::Report(r) => {
+                assert!(r.all);
+                assert_eq!(r.output, ReportOutput::Json);
+            }
+            other => panic!("expected report, got {other:?}"),
+        }
+        let cli = Cli::try_parse_from(["s4logs", "report", "--log-group", "/g/*"]).unwrap();
+        match cli.cmd {
+            Cmd::Report(r) => {
+                assert_eq!(r.log_group.as_deref(), Some("/g/*"));
+                assert_eq!(r.output, ReportOutput::Table, "table by default");
+            }
+            other => panic!("expected report, got {other:?}"),
+        }
     }
 
     #[test]

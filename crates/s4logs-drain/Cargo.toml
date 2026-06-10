@@ -18,6 +18,9 @@ aws-sdk-cloudwatchlogs.workspace = true
 async-trait.workspace = true
 bytes.workspace = true
 futures.workspace = true
+# `--log-group` glob discovery (DESIGN.md §11.4) — same engine/defaults as
+# the gateway routing globs.
+globset.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
@@ -25,5 +28,10 @@ tokio.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
+# HTTP-free SDK operation mocking for `AwsCwSource::list_log_groups`
+# pagination (same crate-local discipline as s4logs-core's S3 mocks).
+aws-smithy-mocks = "0.2"
+# `test-util` unlocks the dummy-credential config `mock_client!` needs.
+aws-sdk-cloudwatchlogs = { workspace = true, features = ["test-util"] }
 proptest.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
