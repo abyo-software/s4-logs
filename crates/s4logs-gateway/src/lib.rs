@@ -184,14 +184,28 @@ impl Gateway {
             .replay_wal()
             .await
             .map_err(GatewayError::WalReplay)?;
+        // The sweeper must be stopped *cooperatively*: `abort()` could land
+        // mid-`sweep_expired`, after buffers were taken but before
+        // `put_chunk` completed — dropping acknowledged events at the
+        // cancelled await (caught by the wave-3H soak). The oneshot is only
+        // polled between sweeps, so an in-flight flush always completes
+        // before the task exits.
+        let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
         let sweeper = tokio::spawn(sweep_loop(
             self.buffers.clone(),
             sweep_period(self.flush_interval),
+            stop_rx,
         ));
         let served = axum::serve(listener, self.app())
             .with_graceful_shutdown(shutdown)
             .await;
-        sweeper.abort();
+        let _ = stop_tx.send(());
+        if let Err(err) = sweeper.await {
+            // Panic inside the sweeper: events it was flushing are still in
+            // the WAL (delete-after-flush), so proceed to flush_all rather
+            // than bailing out.
+            tracing::error!(error = %err, "sweeper task failed during shutdown");
+        }
         tracing::info!("shutdown: flushing all buffers");
         let flushed = self.buffers.flush_all().await;
         served?;
@@ -205,12 +219,18 @@ fn sweep_period(flush_interval: Duration) -> Duration {
     (flush_interval / 4).clamp(Duration::from_millis(100), Duration::from_secs(1))
 }
 
-async fn sweep_loop(buffers: Arc<BufferManager>, period: Duration) {
+async fn sweep_loop(
+    buffers: Arc<BufferManager>,
+    period: Duration,
+    mut stop: tokio::sync::oneshot::Receiver<()>,
+) {
     let mut tick = tokio::time::interval(period);
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
-        tick.tick().await;
-        buffers.sweep_expired().await;
+        tokio::select! {
+            _ = tick.tick() => buffers.sweep_expired().await,
+            _ = &mut stop => break,
+        }
     }
 }
 

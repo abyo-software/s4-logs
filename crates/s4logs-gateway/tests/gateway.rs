@@ -135,6 +135,35 @@ impl ChunkSink for FailSink {
 #[async_trait]
 impl GatewaySink for FailSink {}
 
+/// Sink that signals when `put_chunk` starts, then stalls long enough for a
+/// shutdown to race the in-flight flush (wave-3H soak regression).
+struct SlowSink {
+    inner: MemorySink,
+    started: std::sync::atomic::AtomicBool,
+    delay: Duration,
+}
+
+#[async_trait]
+impl ChunkSink for SlowSink {
+    fn key_prefix(&self) -> &str {
+        self.inner.key_prefix()
+    }
+
+    async fn put_chunk(
+        &self,
+        loc: &ChunkLocation,
+        chunk: &EncodedChunk,
+    ) -> Result<PutReceipt, SinkError> {
+        self.started
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+        tokio::time::sleep(self.delay).await;
+        self.inner.put_chunk(loc, chunk).await
+    }
+}
+
+#[async_trait]
+impl GatewaySink for SlowSink {}
+
 fn wal_files(dir: &Path) -> Vec<PathBuf> {
     let mut v: Vec<PathBuf> = std::fs::read_dir(dir)
         .map(|rd| {
@@ -593,6 +622,62 @@ async fn graceful_shutdown_flushes_buffers() {
     assert_eq!(
         decode_records(&sink, &data[0])[0].message,
         "survives shutdown"
+    );
+}
+
+/// Shutdown racing an in-flight age-flush must not drop acknowledged events
+/// (wave-3H soak finding: `sweeper.abort()` cancelled `sweep_expired`
+/// mid-`put_chunk` after the buffer was already taken). The sweeper is now
+/// stopped cooperatively, so the in-flight flush completes before exit.
+#[tokio::test]
+async fn shutdown_mid_sweep_flush_does_not_lose_events() {
+    let sink = Arc::new(SlowSink {
+        inner: MemorySink::new(""),
+        started: std::sync::atomic::AtomicBool::new(false),
+        delay: Duration::from_millis(500),
+    });
+    let (gateway, _cw) = gw_with_sink("", sink.clone(), |cfg| {
+        cfg.flush_interval = Duration::from_millis(200);
+    });
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+    let server = tokio::spawn(gateway.serve_listener(listener, async move {
+        rx.await.ok();
+    }));
+
+    let body = put_body("/g", "s", &[(JUN10 + 5, "acked, mid-flush")]).to_string();
+    let raw = format!(
+        "POST / HTTP/1.1\r\nhost: localhost\r\nx-amz-target: Logs_20140328.PutLogEvents\r\n\
+         content-type: application/x-amz-json-1.1\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    let mut conn = tokio::net::TcpStream::connect(addr).await.unwrap();
+    conn.write_all(raw.as_bytes()).await.unwrap();
+    let mut resp = Vec::new();
+    conn.read_to_end(&mut resp).await.unwrap();
+    assert!(resp.starts_with(b"HTTP/1.1 200"));
+
+    // Wait for the age sweep to take the buffer and enter put_chunk…
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    while !sink.started.load(std::sync::atomic::Ordering::SeqCst) {
+        assert!(std::time::Instant::now() < deadline, "sweep never flushed");
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    // …then shut down while the flush is still sleeping inside the sink.
+    tx.send(()).unwrap();
+    tokio::time::timeout(Duration::from_secs(10), server)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+
+    let data = data_keys(&sink.inner);
+    assert_eq!(data.len(), 1, "in-flight flush must complete, not be aborted");
+    assert_eq!(
+        decode_records(&sink.inner, &data[0])[0].message,
+        "acked, mid-flush"
     );
 }
 
