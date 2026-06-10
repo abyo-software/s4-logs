@@ -1,0 +1,63 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/s4logs-core",
+    "crates/s4logs-drain",
+    "crates/s4logs-gateway",
+    "crates/s4logs-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+license = "Apache-2.0"
+authors = ["abyo software 合同会社"]
+repository = "https://github.com/abyo-software/s4-logs"
+homepage = "https://github.com/abyo-software/s4-logs"
+description = "S4 Logs — CloudWatch Logs cost offloader: drain or bypass log groups into zstd-compressed S3."
+keywords = ["cloudwatch", "logs", "compression", "zstd", "aws"]
+categories = ["compression", "command-line-utilities"]
+
+[workspace.dependencies]
+# Local path during P1 development. Switch to a published/git dependency at P2
+# (公開) — see S4_LOGS_PROPOSAL.md §4.1. The S4IX sidecar format is consumed
+# verbatim from here; the S4F2 frame container is NOT used (we write standard
+# RFC 8878 zstd frames — DESIGN.md §4).
+s4-codec = { path = "../s4/crates/s4-codec" }
+
+aws-config = { version = "1", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "1"
+aws-sdk-cloudwatchlogs = "1"
+tokio = { version = "1", features = ["full"] }
+axum = "0.8"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+bytes = "1"
+zstd = "0.13"
+crc32c = "0.6"
+thiserror = "2"
+anyhow = "1"
+async-trait = "0.1"
+futures = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+metrics = "0.24"
+metrics-exporter-prometheus = { version = "0.17", default-features = false }
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+globset = "0.4"
+uuid = { version = "1", features = ["v4"] }
+proptest = "1"
+tempfile = "3"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+# s4 と同じ規律。テスト module は `#[allow(clippy::unwrap_used)]` を明示して使う。
+unwrap_used = "deny"
+
+[profile.release]
+lto = "thin"

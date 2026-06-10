@@ -1,0 +1,20 @@
+S4 Logs
+Copyright 2026 abyo software 合同会社
+
+This product includes software developed at abyo software 合同会社.
+
+Third-party components:
+
+- s4-codec (https://github.com/abyo-software/s4) — Apache-2.0.
+  S4 Logs reuses the S4IX frame-index sidecar format from s4-codec.
+- zstd / zstd-rs — BSD-3-Clause / (Apache-2.0 OR MIT).
+- Rust ecosystem crates — MIT / Apache-2.0 / BSD variants; see
+  `cargo about` output for the complete inventory.
+
+Trademarks:
+
+"S4" and "S4 Logs" are unregistered trademarks of abyo software 合同会社.
+"Amazon CloudWatch", "Amazon S3", and "AWS" are trademarks of Amazon.com,
+Inc. or its affiliates. S4 Logs is not affiliated with, endorsed by, or
+sponsored by Amazon or AWS. References to Amazon CloudWatch describe
+interoperability only (nominative use).

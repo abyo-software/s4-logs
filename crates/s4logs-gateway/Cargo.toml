@@ -1,0 +1,34 @@
+[package]
+name = "s4logs-gateway"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "S4 Logs Mode B — PutLogEvents-compatible endpoint routing streams to CloudWatch or zstd-compressed S3."
+
+[lints]
+workspace = true
+
+[dependencies]
+s4logs-core = { path = "../s4logs-core" }
+aws-sdk-cloudwatchlogs.workspace = true
+async-trait.workspace = true
+axum.workspace = true
+bytes.workspace = true
+futures.workspace = true
+globset.workspace = true
+metrics.workspace = true
+metrics-exporter-prometheus.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+toml.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util"] }

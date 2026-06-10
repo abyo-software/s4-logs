@@ -1,0 +1,29 @@
+[package]
+name = "s4logs-drain"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "S4 Logs Mode A — drain CloudWatch log groups into zstd-compressed S3 with manifest-gated retention shortening."
+
+[lints]
+workspace = true
+
+[dependencies]
+s4logs-core = { path = "../s4logs-core" }
+aws-sdk-cloudwatchlogs.workspace = true
+async-trait.workspace = true
+bytes.workspace = true
+futures.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

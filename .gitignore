@@ -1,0 +1,6 @@
+/target
+**/*.rs.bk
+*.pem
+.env
+node_modules/
+/localstack-data
