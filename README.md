@@ -98,6 +98,14 @@ s4logs drain --log-group /aws/lambda/payments \
 # Shrink CW retention — only succeeds if every older window is archived.
 s4logs drain --log-group /aws/lambda/payments \
   --bucket my-archive-bucket --retention-days 7 --apply-retention
+
+# Whole-account sweeps: --log-group takes a glob, or use --all. Per-group
+# failures are reported and skipped; exit code 1 if any group failed.
+s4logs drain --all --bucket my-archive-bucket --group-concurrency 2
+
+# What have I archived so far, and what is it saving? Reads manifests only —
+# zero CloudWatch API calls, zero S3 data reads.
+s4logs report --all --bucket my-archive-bucket
 ```
 
 ### Run the bypass gateway (Mode B)
@@ -105,8 +113,15 @@ s4logs drain --log-group /aws/lambda/payments \
 ```console
 s4logs serve --listen 0.0.0.0:8080 \
   --bucket my-archive-bucket --prefix s4logs --account 123456789012 \
-  --routing-config routing.toml --flush-bytes 8388608 --flush-interval 60s
+  --routing-config routing.toml --flush-bytes 8MiB --flush-interval 60s \
+  --wal-dir /var/lib/s4logs/wal
 ```
+
+`--wal-dir` makes acknowledged events crash-durable (fsync before the ack,
+replay on restart — at-least-once). To require signed requests, add
+`--auth-mode sigv4` with `S4LOGS_AUTH_ACCESS_KEY` / `S4LOGS_AUTH_SECRET`;
+agents and SDKs already sign, so no client change is needed beyond matching
+credentials.
 
 `routing.toml` (first match wins):
 
@@ -141,7 +156,8 @@ or the **CloudWatch Agent**:
 
 ```console
 # grep without downloading whole objects: timestamp sidecar prunes frames,
-# byte-range sidecar turns the survivors into S3 Range GETs.
+# byte-range sidecar turns the survivors into S3 Range GETs. Output is
+# timestamp-ordered across objects (streaming k-way merge, bounded memory).
 s4logs grep 'ERROR.*timeout' --log-group /aws/lambda/payments \
   --from 2026-03-01T00:00:00Z --to 2026-03-02T00:00:00Z --output text
 
@@ -259,14 +275,16 @@ anyone, not just us. S4 Logs handles this honestly:
 
 ## Limitations (read before deploying)
 
-- **No SigV4 validation on the gateway (P1).** The `Authorization` header is
-  ignored. Run it behind TLS and a network boundary (security group /
-  private subnet / mTLS mesh). Static-credential validation is planned
-  (roadmap, P3).
-- **In-memory buffering in the gateway.** Events routed to S3 sit in
-  process memory until a flush (8 MiB / 60 s / shutdown, configurable). A
-  crash loses up to one flush window per (group, day) buffer. A WAL is on
-  the roadmap. `both` routing keeps a CW copy if you need belt and braces.
+- **SigV4 verification is opt-in and single-key.** `--auth-mode sigv4`
+  verifies incoming signatures against one static key pair — enough for
+  agents/SDKs, but there is no IAM integration, no session tokens, no
+  presigned URLs. Default remains no verification: then run it behind TLS
+  and a network boundary (security group / private subnet / mTLS mesh).
+- **Durability is opt-in via `--wal-dir`.** With it, events are fsynced
+  before the ack and replayed on restart (at-least-once: duplicates are
+  possible after a crash, never silent loss). Without it, a crash loses up
+  to one flush window per (group, day) buffer. `both` routing keeps a CW
+  copy if you need belt and braces.
 - **Drain API cost is not yet measured at scale.** FilterLogEvents is a
   metered, account-quota'd API; TB-scale initial drains will take time and
   money we have not yet quantified (planned before any commercial claims —
@@ -298,18 +316,24 @@ the groups you actually drain):
 ## Observability
 
 The gateway serves `/health` (unconditional 200), `/ready` (503 until the
-sink is reachable and the last flush succeeded) and Prometheus `/metrics`:
-`s4logs_events_total{action=}`, `s4logs_flush_total`,
-`s4logs_flush_bytes_total{kind=raw|compressed}`,
-`s4logs_cw_passthrough_errors_total`. Logs via `tracing`
-(`--log-format json|pretty`).
+sink probe — a cached `ListObjectsV2 max-keys=1` — succeeds and the last
+flush did) and Prometheus `/metrics`: `s4logs_events_total{action=}`,
+`s4logs_flush_total`, `s4logs_flush_bytes_total{kind=raw|compressed}`,
+`s4logs_cw_passthrough_errors_total`, `s4logs_backpressure_total`, and the
+WAL family (`s4logs_wal_appends_total`, `s4logs_wal_replayed_events_total`,
+`s4logs_wal_torn_lines_total`, `s4logs_wal_fsync_errors_total`). Logs via
+`tracing` (`--log-format json|pretty`).
 
 ## Development
 
 ```console
 cargo test --workspace          # unit + proptest (no network)
 ./scripts/e2e.sh                # LocalStack E2E (docker compose)
+./scripts/soak.sh               # sustained-load soak (S4LOGS_SOAK_SECONDS, default 60)
 cargo test -p s4logs-e2e --release -- --ignored bench --nocapture   # bench table
+cargo test -p s4logs-core --test fuzz_bolero   # fuzz targets, test mode
+cargo bench -p s4logs-core -- --quick          # criterion benches
+docker build -t s4logs .                        # 176 MB runtime image
 ```
 
 Workspace crates: `s4logs-core` (format + S3 layout + read path),

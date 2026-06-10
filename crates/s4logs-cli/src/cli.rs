@@ -294,6 +294,36 @@ pub struct ServeArgs {
     /// Don't build a CloudWatch client; cloudwatch/both routes become no-ops
     #[arg(long)]
     pub no_cloudwatch: bool,
+
+    /// Write-ahead log directory: events are fsynced here before the
+    /// PutLogEvents ack and replayed on restart (DESIGN.md §11.1).
+    /// Without it a crash loses buffered events below the flush thresholds.
+    #[arg(long, value_name = "DIR")]
+    pub wal_dir: Option<PathBuf>,
+
+    /// Require SigV4 on incoming requests, verified against
+    /// --auth-access-key / --auth-secret (DESIGN.md §11.2)
+    #[arg(long, value_enum, default_value_t = AuthModeArg::None)]
+    pub auth_mode: AuthModeArg,
+
+    /// Access key id clients must sign with (sigv4 mode)
+    #[arg(long, env = "S4LOGS_AUTH_ACCESS_KEY")]
+    pub auth_access_key: Option<String>,
+
+    /// Secret access key for signature verification (sigv4 mode).
+    /// Prefer the env var over the flag (process lists leak flag values).
+    #[arg(long, env = "S4LOGS_AUTH_SECRET", hide_env_values = true)]
+    pub auth_secret: Option<String>,
+
+    /// Total uncompressed buffer cap before backpressure (503) kicks in
+    #[arg(long, default_value = "256MiB", value_parser = timearg::parse_size_bytes)]
+    pub max_buffered_bytes: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum AuthModeArg {
+    None,
+    Sigv4,
 }
 
 #[cfg(test)]

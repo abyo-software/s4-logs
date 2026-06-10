@@ -2807,7 +2807,7 @@ dependencies = [
 
 [[package]]
 name = "s4logs-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "aws-config",
@@ -2833,7 +2833,7 @@ dependencies = [
 
 [[package]]
 name = "s4logs-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "aws-sdk-s3",
@@ -2857,7 +2857,7 @@ dependencies = [
 
 [[package]]
 name = "s4logs-drain"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "aws-sdk-cloudwatchlogs",
@@ -2876,7 +2876,7 @@ dependencies = [
 
 [[package]]
 name = "s4logs-e2e"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "aws-config",
@@ -2896,7 +2896,7 @@ dependencies = [
 
 [[package]]
 name = "s4logs-gateway"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "aws-credential-types",

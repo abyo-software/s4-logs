@@ -674,7 +674,11 @@ async fn shutdown_mid_sweep_flush_does_not_lose_events() {
         .unwrap();
 
     let data = data_keys(&sink.inner);
-    assert_eq!(data.len(), 1, "in-flight flush must complete, not be aborted");
+    assert_eq!(
+        data.len(),
+        1,
+        "in-flight flush must complete, not be aborted"
+    );
     assert_eq!(
         decode_records(&sink.inner, &data[0])[0].message,
         "acked, mid-flush"
