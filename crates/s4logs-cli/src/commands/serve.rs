@@ -43,6 +43,9 @@ pub async fn run(global: &GlobalArgs, args: &ServeArgs) -> Result<()> {
             flush_bytes: args.flush_bytes,
             flush_interval: args.flush_interval,
             chunk: ChunkConfig::default(),
+            // Wave 3F gateway options (WAL / SigV4 / memory cap) keep their
+            // defaults until the orchestrator wires the serve flags.
+            ..GatewayConfig::default()
         },
         Arc::new(store),
         forward,

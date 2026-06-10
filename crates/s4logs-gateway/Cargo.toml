@@ -15,11 +15,19 @@ workspace = true
 [dependencies]
 s4logs-core = { path = "../s4logs-core" }
 aws-sdk-cloudwatchlogs.workspace = true
+# `ProbedStore` /ready probe: ListObjectsV2 max_keys=1 over the same client
+# `ObjectStore` already carries (no new transitive deps — core pulls it in).
+aws-sdk-s3.workspace = true
 async-trait.workspace = true
 axum.workspace = true
 bytes.workspace = true
 futures.workspace = true
 globset.workspace = true
+# SigV4 verification primitives (DESIGN.md §11.2) — RustCrypto, deliberately
+# no full SigV4 crate in the production dependency tree.
+hex = "0.4"
+hmac = "0.12"
+sha2 = "0.10"
 metrics.workspace = true
 metrics-exporter-prometheus.workspace = true
 serde.workspace = true
@@ -35,3 +43,12 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util"
 # `ServiceExt::oneshot` for in-process axum requests (wave 1C tests).
 tower = { version = "0.5", features = ["util"] }
 zstd.workspace = true
+# End-to-end SigV4 known-answer tests: requests are signed with the official
+# AWS signer and must verify against our independent implementation.
+aws-sigv4 = "1"
+aws-credential-types = "1"
+# Same HTTP-free SDK mocking discipline as s4logs-core: the `/ready`
+# ListObjectsV2 probe is tested without LocalStack.
+aws-smithy-mocks = "0.2"
+aws-sdk-s3 = { workspace = true, features = ["test-util"] }
+tempfile.workspace = true

@@ -57,6 +57,12 @@ pub struct CreateLogStreamRequest {
 pub struct DescribeLogGroupsRequest {
     #[serde(default)]
     pub log_group_name_prefix: Option<String>,
+    /// Page size, 1..=50 (CW contract); default 50.
+    #[serde(default)]
+    pub limit: Option<i64>,
+    /// Opaque pagination token from a previous response.
+    #[serde(default)]
+    pub next_token: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -69,6 +75,12 @@ pub struct DescribeLogStreamsRequest {
     pub log_group_identifier: Option<String>,
     #[serde(default)]
     pub log_stream_name_prefix: Option<String>,
+    /// Page size, 1..=50 (CW contract); default 50.
+    #[serde(default)]
+    pub limit: Option<i64>,
+    /// Opaque pagination token from a previous response.
+    #[serde(default)]
+    pub next_token: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -84,6 +96,8 @@ pub struct LogGroupSummary {
 #[serde(rename_all = "camelCase")]
 pub struct DescribeLogGroupsResponse {
     pub log_groups: Vec<LogGroupSummary>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_token: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -97,6 +111,8 @@ pub struct LogStreamSummary {
 #[serde(rename_all = "camelCase")]
 pub struct DescribeLogStreamsResponse {
     pub log_streams: Vec<LogStreamSummary>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_token: Option<String>,
 }
 
 /// AWS JSON 1.1 error: `{"__type":"<Name>","message":"..."}`.
@@ -175,6 +191,40 @@ impl ApiError {
             StatusCode::INTERNAL_SERVER_ERROR,
             "ServiceUnavailableException",
             message,
+        )
+    }
+
+    /// Memory-cap backpressure: HTTP 503 so agents back off and retry
+    /// (DESIGN.md wave-3 amendment, `s4logs_backpressure_total`).
+    pub fn backpressure() -> Self {
+        Self::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "ServiceUnavailableException",
+            "buffer memory cap exceeded; retry the batch",
+        )
+    }
+
+    /// Server-side invariant broken (e.g. WAL append failed): the gateway
+    /// cannot keep its durability promise, so the agent must retry.
+    pub fn internal_failure(message: impl Into<String>) -> Self {
+        Self::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "InternalFailure",
+            message,
+        )
+    }
+
+    /// SigV4 verification failed (DESIGN.md §11.2).
+    pub fn invalid_signature(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::FORBIDDEN, "InvalidSignatureException", message)
+    }
+
+    /// Authentication required but no `Authorization` header present.
+    pub fn missing_auth_token() -> Self {
+        Self::new(
+            StatusCode::FORBIDDEN,
+            "MissingAuthenticationTokenException",
+            "Missing Authentication Token",
         )
     }
 }

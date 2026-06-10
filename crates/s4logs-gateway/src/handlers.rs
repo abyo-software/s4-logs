@@ -1,19 +1,24 @@
-//! AWS JSON 1.1 dispatch + observability endpoints (DESIGN.md §8.1, §8.4).
+//! AWS JSON 1.1 dispatch + observability endpoints (DESIGN.md §8.1, §8.4,
+//! §11.2).
 //!
 //! - `POST /` with `X-Amz-Target: Logs_20140328.<Action>` dispatches the
 //!   CW Logs API subset.
-//! - **SigV4 is NOT validated in P1** (DESIGN.md §8.1). The `Authorization`
-//!   header is ignored entirely; deploy behind TLS + a network boundary.
-//!   Static-credential validation is planned for P3.
+//! - **SigV4** (DESIGN.md §11.2): opt-in via `GatewayConfig::auth`. With
+//!   `AuthMode::SigV4`, the API route verifies every request against the
+//!   static credential before dispatch; `/health`, `/ready` and `/metrics`
+//!   stay exempt. With the default `AuthMode::None` the `Authorization`
+//!   header is ignored (P1 posture — deploy behind TLS + network boundary).
 //! - `GET /health` (unconditional 200), `GET /ready` (sink probe + last
 //!   flush outcome), `GET /metrics` (Prometheus).
 
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use axum::Router;
-use axum::body::Bytes;
-use axum::extract::State;
+use axum::body::{Body, Bytes};
+use axum::extract::{Request, State};
 use axum::http::{HeaderMap, StatusCode};
+use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use metrics::counter;
@@ -26,7 +31,8 @@ use crate::api::{
     DescribeLogGroupsResponse, DescribeLogStreamsRequest, DescribeLogStreamsResponse,
     LogGroupSummary, LogStreamSummary, PutLogEventsRequest, TARGET_PREFIX,
 };
-use crate::buffer::BufferManager;
+use crate::auth::{self, AuthMode};
+use crate::buffer::{BufferError, BufferManager};
 use crate::forward::CwForward;
 use crate::registry::{Registry, RegistryError};
 use crate::routing::RoutingConfig;
@@ -40,6 +46,7 @@ struct Inner {
     buffers: Arc<BufferManager>,
     registry: Registry,
     forward: Arc<dyn CwForward>,
+    auth: AuthMode,
     /// `None` if another metrics recorder was installed first — `/metrics`
     /// then renders empty (the co-resident recorder owns the data).
     metrics: Option<PrometheusHandle>,
@@ -50,6 +57,7 @@ impl AppState {
         routing: RoutingConfig,
         buffers: Arc<BufferManager>,
         forward: Arc<dyn CwForward>,
+        auth: AuthMode,
         metrics: Option<PrometheusHandle>,
     ) -> Self {
         Self(Arc::new(Inner {
@@ -57,20 +65,76 @@ impl AppState {
             buffers,
             registry: Registry::default(),
             forward,
+            auth,
             metrics,
         }))
     }
 }
 
 /// Build the axum application (also used directly by tests via
-/// `tower::ServiceExt::oneshot`).
+/// `tower::ServiceExt::oneshot`). The SigV4 layer wraps only the API route
+/// added before it — `/health`, `/ready`, `/metrics` are added after and
+/// stay exempt (DESIGN.md §11.2).
 pub fn build_app(state: AppState) -> Router {
     Router::new()
         .route("/", post(dispatch))
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            auth_middleware,
+        ))
         .route("/health", get(|| async { "ok" }))
         .route("/ready", get(ready))
         .route("/metrics", get(metrics_endpoint))
         .with_state(state)
+}
+
+/// SigV4 verification (no-op for `AuthMode::None`). The body must be
+/// buffered to compute the payload hash; it is replayed downstream.
+async fn auth_middleware(State(state): State<AppState>, req: Request, next: Next) -> Response {
+    let AuthMode::SigV4 {
+        access_key,
+        secret_key,
+    } = &state.0.auth
+    else {
+        return next.run(req).await;
+    };
+    let (parts, body) = req.into_parts();
+    let bytes = match axum::body::to_bytes(body, usize::MAX).await {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            return ApiError::internal_failure(format!("request body read failed: {err}"))
+                .into_response();
+        }
+    };
+    let verdict = auth::verify(
+        access_key,
+        secret_key,
+        &auth::RequestView {
+            method: parts.method.as_str(),
+            path: parts.uri.path(),
+            query: parts.uri.query(),
+            headers: &parts.headers,
+            body: &bytes,
+        },
+        SystemTime::now(),
+    );
+    match verdict {
+        Ok(()) => {
+            next.run(Request::from_parts(parts, Body::from(bytes)))
+                .await
+        }
+        Err(auth::AuthError::MissingToken) => {
+            tracing::warn!("rejecting request without Authorization header");
+            ApiError::missing_auth_token().into_response()
+        }
+        Err(auth::AuthError::Invalid(reason)) => {
+            tracing::warn!(reason, "rejecting request with invalid signature");
+            ApiError::invalid_signature(format!(
+                "The request signature we calculated does not match: {reason}"
+            ))
+            .into_response()
+        }
+    }
 }
 
 async fn ready(State(state): State<AppState>) -> Response {
@@ -154,7 +218,17 @@ async fn put_log_events(state: &AppState, body: &[u8]) -> Result<Response, ApiEr
             .await
             .map_err(|e| {
                 tracing::error!(error = %e, log_group = %req.log_group_name, "buffering failed");
-                ApiError::service_unavailable("event buffering failed; retry the batch")
+                match e {
+                    // Memory cap: 503, agents back off and retry.
+                    BufferError::OverCapacity => ApiError::backpressure(),
+                    // WAL failure: the durability promise cannot be kept —
+                    // fail loudly (500 InternalFailure) instead of degrading
+                    // to memory-only buffering silently.
+                    BufferError::Wal(_) => {
+                        ApiError::internal_failure("wal append failed; retry the batch")
+                    }
+                    _ => ApiError::service_unavailable("event buffering failed; retry the batch"),
+                }
             })?;
     }
     if action.to_cloudwatch()
@@ -243,10 +317,12 @@ fn describe_log_groups(state: &AppState, body: &[u8]) -> Result<Response, ApiErr
     } else {
         parse_body(body)?
     };
-    let log_groups = state
+    let all = state
         .0
         .registry
-        .describe_groups(req.log_group_name_prefix.as_deref())
+        .describe_groups(req.log_group_name_prefix.as_deref());
+    let (page, next_token) = paginate(all, req.limit, req.next_token.as_deref())?;
+    let log_groups = page
         .into_iter()
         .map(|(name, creation_time)| LogGroupSummary {
             arn: format!("arn:aws:logs:local:000000000000:log-group:{name}:*"),
@@ -254,7 +330,10 @@ fn describe_log_groups(state: &AppState, body: &[u8]) -> Result<Response, ApiErr
             creation_time,
         })
         .collect();
-    api::amz_json_ok(&DescribeLogGroupsResponse { log_groups })
+    api::amz_json_ok(&DescribeLogGroupsResponse {
+        log_groups,
+        next_token,
+    })
 }
 
 fn describe_log_streams(state: &AppState, body: &[u8]) -> Result<Response, ApiError> {
@@ -271,12 +350,39 @@ fn describe_log_streams(state: &AppState, body: &[u8]) -> Result<Response, ApiEr
         .registry
         .describe_streams(group, req.log_stream_name_prefix.as_deref())
         .map_err(|_| ApiError::not_found("log group"))?;
-    let log_streams = streams
+    let (page, next_token) = paginate(streams, req.limit, req.next_token.as_deref())?;
+    let log_streams = page
         .into_iter()
         .map(|(name, creation_time)| LogStreamSummary {
             log_stream_name: name,
             creation_time,
         })
         .collect();
-    api::amz_json_ok(&DescribeLogStreamsResponse { log_streams })
+    api::amz_json_ok(&DescribeLogStreamsResponse {
+        log_streams,
+        next_token,
+    })
+}
+
+/// `limit` + opaque `nextToken` pagination over a stable (name-ordered)
+/// snapshot. The token is the start offset — opaque to clients, validated
+/// here. CW caps `limit` at 50 for both Describe* actions.
+fn paginate<T>(
+    items: Vec<T>,
+    limit: Option<i64>,
+    next_token: Option<&str>,
+) -> Result<(Vec<T>, Option<String>), ApiError> {
+    let start = match next_token {
+        None => 0usize,
+        Some(t) => t
+            .parse::<usize>()
+            .map_err(|_| ApiError::invalid_parameter("invalid nextToken"))?,
+    };
+    let limit = usize::try_from(limit.unwrap_or(50).clamp(1, 50))
+        .map_err(|_| ApiError::invalid_parameter("invalid limit"))?;
+    let total = items.len();
+    let page: Vec<T> = items.into_iter().skip(start).take(limit).collect();
+    let consumed = start.saturating_add(page.len());
+    let next = (consumed < total && !page.is_empty()).then(|| consumed.to_string());
+    Ok((page, next))
 }
