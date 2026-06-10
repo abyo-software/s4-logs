@@ -2680,6 +2680,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "s4logs-e2e"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "aws-config",
+ "aws-sdk-cloudwatchlogs",
+ "aws-sdk-s3",
+ "bytes",
+ "futures",
+ "s4logs-core",
+ "s4logs-drain",
+ "s4logs-gateway",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "zstd",
+]
+
+[[package]]
 name = "s4logs-gateway"
 version = "0.1.0"
 dependencies = [

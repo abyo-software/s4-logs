@@ -5,6 +5,7 @@ members = [
     "crates/s4logs-drain",
     "crates/s4logs-gateway",
     "crates/s4logs-cli",
+    "crates/s4logs-e2e",
 ]
 
 [workspace.package]
