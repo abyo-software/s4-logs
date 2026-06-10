@@ -168,3 +168,36 @@ action = "cloudwatch"
   aws-sdk-cloudwatchlogs (endpoint override) で PutLogEvents → flush → S3 検証。
 - 即値 (`Date.now` 系) を format に埋めない。manifest の completed_at_ms のみ
   wall clock 可。
+
+## 11. Wave 3 amendments (製品化 — 2026-06-10 追記)
+
+### 11.1 Gateway WAL (opt-in, `--wal-dir DIR`)
+
+- buffer key (log_group, dt) ごとに append-only segment file: 1 行 = 1 受理イベントの
+  JSONL `{"log_group":...,"timestamp":...,"stream":...,"message":...,"ingestion_time":...}`。
+- PutLogEvents 応答を返す**前**に WAL append (group commit / 数 ms バッチの fsync は可、
+  trade-off をコードに明記)。flush 成功でその segment を削除。
+- 起動時 replay: 残存 segment を buffer に積み直してから listen 開始。壊れた末尾行
+  (torn write) は warn して skip。WAL 無効時は従来挙動 (README の Limitations は維持)。
+
+### 11.2 Gateway 認証 (opt-in, `--auth-mode none|sigv4`)
+
+- sigv4: `--auth-access-key` / `--auth-secret` (または env) の static credential 1 組に
+  対する受信 SigV4 検証 (Authorization header 分解 → 正規リクエスト再構築 → 署名比較、
+  clock skew ±15 分、UNSIGNED-PAYLOAD と x-amz-content-sha256 両対応)。
+- 失敗 → 403 `{"__type":"InvalidSignatureException"}`。/health /ready /metrics は検証外。
+- default は none (P1 互換)。
+
+### 11.3 grep / restore / report (CLI)
+
+- grep: chunk 横断で **timestamp 昇順の k-way merge** 出力 (同 ts は stream, 入力順で安定)。
+  per-dt prefix listing で LIST 範囲を絞る。
+- restore --to-log-group: 全件メモリ sort をやめ、chunk を時刻順に stream しつつ
+  batch を作る (上限メモリ一定)。
+- 新コマンド `s4logs report --log-group X|--all`: manifest を集計し、退避済み
+  records / raw / compressed / 推定月額削減 / window coverage を表示。
+
+### 11.4 drain マルチ loggroup
+
+- `--log-group` は glob (globset) を受け、`--all` で DescribeLogGroups 全列挙。
+  group ごとに独立 DrainJob (失敗 group は skip + 集計報告、exit code 1)。
