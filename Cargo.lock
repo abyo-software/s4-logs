@@ -2604,6 +2604,7 @@ checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
 [[package]]
 name = "s4-codec"
 version = "1.0.0"
+source = "git+https://github.com/abyo-software/s4?tag=v1.0.0#af3c69b6cd435eecfb92488fe9893ff26b808c4b"
 dependencies = [
  "anyhow",
  "async-trait",

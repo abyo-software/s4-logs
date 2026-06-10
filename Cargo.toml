@@ -21,11 +21,10 @@ keywords = ["cloudwatch", "logs", "compression", "zstd", "aws"]
 categories = ["compression", "command-line-utilities"]
 
 [workspace.dependencies]
-# Local path during P1 development. Switch to a published/git dependency at P2
-# (公開) — see S4_LOGS_PROPOSAL.md §4.1. The S4IX sidecar format is consumed
-# verbatim from here; the S4F2 frame container is NOT used (we write standard
-# RFC 8878 zstd frames — DESIGN.md §4).
-s4-codec = { path = "../s4/crates/s4-codec" }
+# The S4IX sidecar format is consumed verbatim from here; the S4F2 frame
+# container is NOT used (we write standard RFC 8878 zstd frames — DESIGN.md
+# §4). Pinned to the v1.0.0 tag: the S4IX format is frozen for 1.x.
+s4-codec = { git = "https://github.com/abyo-software/s4", tag = "v1.0.0" }
 
 aws-config = { version = "1", features = ["behavior-version-latest"] }
 aws-sdk-s3 = "1"
