@@ -28,6 +28,7 @@ s4-codec = { git = "https://github.com/abyo-software/s4", tag = "v1.0.0" }
 
 aws-config = { version = "1", features = ["behavior-version-latest"] }
 aws-sdk-s3 = "1"
+aws-sdk-cloudwatch = "1"
 aws-sdk-cloudwatchlogs = "1"
 tokio = { version = "1", features = ["full"] }
 axum = "0.8"
