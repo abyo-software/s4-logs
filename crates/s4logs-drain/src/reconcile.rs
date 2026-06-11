@@ -543,7 +543,28 @@ fn decode_object(obj: &ManifestObject, body: &[u8]) -> Result<Vec<u8>, Reconcile
     };
     match obj.raw_bytes {
         Some(raw) => s4logs_core::read::decompress_frames(body, raw).map_err(|e| corrupt(&e)),
-        None => zstd::stream::decode_all(body).map_err(|e| corrupt(&e)),
+        // Legacy manifests (pre-wave-3G) carry no `raw_bytes`. A plain
+        // `decode_all` would materialize an unbounded plaintext — a forged or
+        // pathological object could OOM the reconcile before it can repair or
+        // fail cleanly. Cap the decode at the same per-object ceiling the core
+        // bomb guard uses.
+        None => {
+            use std::io::Read;
+            let cap = s4logs_core::read::MAX_DECOMPRESSED_BYTES;
+            let mut out = Vec::new();
+            let decoder = zstd::stream::read::Decoder::new(body).map_err(|e| corrupt(&e))?;
+            let read = decoder
+                .take(cap + 1)
+                .read_to_end(&mut out)
+                .map_err(|e| corrupt(&e))?;
+            if read as u64 > cap {
+                return Err(ReconcileError::Corrupt {
+                    key: obj.data_key.clone(),
+                    message: format!("legacy object exceeds {cap}-byte decode cap"),
+                });
+            }
+            Ok(out)
+        }
     }
 }
 

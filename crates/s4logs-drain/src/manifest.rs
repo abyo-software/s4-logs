@@ -125,6 +125,29 @@ impl Manifest {
     }
 }
 
+/// True only if `bytes` decodes into a complete, version-checked manifest
+/// that belongs to exactly this account / log group / window. Any decode
+/// error, version mismatch, or boundary mismatch returns false. Used by both
+/// the drain skip path and the retention gate so a corrupt/partial manifest
+/// object is never mistaken for proof of coverage (fail-closed).
+pub fn manifest_covers_window(
+    bytes: &[u8],
+    account: &str,
+    log_group: &str,
+    window_start_ms: i64,
+    window_end_ms: i64,
+) -> bool {
+    match Manifest::from_json_bytes(bytes) {
+        Ok(m) => {
+            m.account == account
+                && m.log_group == log_group
+                && m.window_start_ms == window_start_ms
+                && m.window_end_ms == window_end_ms
+        }
+        Err(_) => false,
+    }
+}
+
 /// Parse the window out of a manifest key
 /// (`…/window={start_ms}-{end_ms}.json`). Returns `None` for foreign keys.
 /// Window timestamps are non-negative by construction ([`crate::window`]).

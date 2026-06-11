@@ -7,13 +7,11 @@
 //! gate does **nothing**. Default is report-only; the actual API call
 //! additionally requires `apply = true` (`--apply-retention` in wave 2D).
 
-use std::collections::HashSet;
-
-use s4logs_core::layout::manifest_group_prefix;
+use s4logs_core::layout::manifest_key;
 
 use crate::cw::CwSource;
 use crate::job::DrainError;
-use crate::manifest::{ManifestStore, parse_manifest_key_window};
+use crate::manifest::{ManifestStore, manifest_covers_window};
 use crate::window::{DAY_MS, Window, windows_covering};
 
 /// Inputs to the retention gate.
@@ -78,22 +76,31 @@ pub async fn plan_retention(
     } else {
         windows_covering(req.coverage_from_ms, cutoff_ms, req.window_ms)?
     };
-    let listed = manifests
-        .list(&manifest_group_prefix(
+    // This gate decides whether CloudWatch may DELETE logs, so a key merely
+    // *existing* is not proof of coverage: a zero-byte, truncated,
+    // wrong-version, or mismatched manifest object at the expected key would
+    // otherwise green-light deletion of un-archived data. GET and validate
+    // every required window's manifest; anything that does not decode into a
+    // matching, complete manifest is treated as missing (fail-closed).
+    let mut missing_windows: Vec<Window> = Vec::new();
+    for w in &required_windows {
+        let key = manifest_key(
             key_prefix,
             &req.account,
             &req.log_group,
-        ))
-        .await?;
-    let have: HashSet<Window> = listed
-        .iter()
-        .filter_map(|k| parse_manifest_key_window(k))
-        .collect();
-    let missing_windows: Vec<Window> = required_windows
-        .iter()
-        .filter(|w| !have.contains(w))
-        .copied()
-        .collect();
+            w.start_ms,
+            w.end_ms,
+        );
+        let covered = match manifests.get(&key).await? {
+            None => false,
+            Some(bytes) => {
+                manifest_covers_window(&bytes, &req.account, &req.log_group, w.start_ms, w.end_ms)
+            }
+        };
+        if !covered {
+            missing_windows.push(*w);
+        }
+    }
     Ok(RetentionPlan {
         log_group: req.log_group.clone(),
         retention_days: req.retention_days,
@@ -163,12 +170,30 @@ mod tests {
         }
     }
 
+    fn valid_manifest(w: &Window) -> Bytes {
+        crate::manifest::Manifest {
+            version: crate::manifest::MANIFEST_VERSION,
+            account: ACCT.into(),
+            log_group: GROUP.into(),
+            window_start_ms: w.start_ms,
+            window_end_ms: w.end_ms,
+            objects: Vec::new(),
+            record_count: 0,
+            completed_at_ms: 0,
+            drain_version: "test".into(),
+            reconciled_at_ms: None,
+            reconciled_added: None,
+        }
+        .to_json_bytes()
+        .unwrap()
+    }
+
     async fn seed(store: &MemoryManifestStore, windows: &[Window]) {
         for w in windows {
             store
                 .put(
                     &manifest_key(PREFIX, ACCT, GROUP, w.start_ms, w.end_ms),
-                    Bytes::from_static(b"{}"),
+                    valid_manifest(w),
                 )
                 .await
                 .unwrap();
@@ -284,21 +309,45 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn foreign_keys_under_manifest_prefix_are_ignored() {
+    async fn corrupt_or_partial_manifest_does_not_count_as_coverage() {
+        // The gate decides whether CloudWatch may DELETE logs. A manifest
+        // object that exists at the right key but is empty / truncated /
+        // wrong-account must be treated as a gap (fail-closed), or a partial
+        // archive could green-light deletion of un-archived data.
+        let r = req(7, DAY0 + 10 * DAY_MS);
+        let required = windows_covering(DAY0, DAY0 + 3 * DAY_MS, HOUR_MS).unwrap();
+
+        // (a) zero-byte object at every required key
         let store = MemoryManifestStore::new();
-        let r = req(1, DAY0 + DAY_MS + HOUR_MS); // cutoff = day0 + 1h
-        // garbage key under the group's manifest prefix
+        for w in &required {
+            store
+                .put(
+                    &manifest_key(PREFIX, ACCT, GROUP, w.start_ms, w.end_ms),
+                    Bytes::from_static(b""),
+                )
+                .await
+                .unwrap();
+        }
+        assert!(
+            !plan_retention(&store, PREFIX, &r).await.unwrap().allowed(),
+            "zero-byte manifests must not satisfy coverage"
+        );
+
+        // (b) valid JSON but wrong account at one window → that window is a gap
+        let store = MemoryManifestStore::new();
+        seed(&store, &required).await;
+        let bad = &required[5];
+        let mut m = crate::manifest::Manifest::from_json_bytes(&valid_manifest(bad)).unwrap();
+        m.account = "999999999999".into();
         store
             .put(
-                &format!(
-                    "{}/notawindow.json",
-                    manifest_group_prefix(PREFIX, ACCT, GROUP).trim_end_matches('/')
-                ),
-                Bytes::from_static(b"{}"),
+                &manifest_key(PREFIX, ACCT, GROUP, bad.start_ms, bad.end_ms),
+                m.to_json_bytes().unwrap(),
             )
             .await
             .unwrap();
         let plan = plan_retention(&store, PREFIX, &r).await.unwrap();
-        assert!(!plan.allowed(), "garbage keys must not count as coverage");
+        assert!(!plan.allowed(), "account-mismatched manifest is a gap");
+        assert_eq!(plan.missing_windows, vec![*bad]);
     }
 }

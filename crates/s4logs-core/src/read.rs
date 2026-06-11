@@ -93,6 +93,10 @@ pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64,
 /// (mirrors s4 `cpu_zstd.rs`).
 pub const BOMB_SLACK_BYTES: u64 = 1024;
 const BOOTSTRAP_CAPACITY: usize = 1 << 20;
+/// Hard ceiling on a single object's decompressed size (64 GiB). A claimed
+/// `expected_original` above this is treated as a hostile sidecar — real log
+/// objects are bounded by the drain `--chunk-target` (default 256 MiB).
+pub const MAX_DECOMPRESSED_BYTES: u64 = 64 << 30;
 
 /// Decompress one or more concatenated standard zstd frames, refusing to
 /// emit more than `expected_original + BOMB_SLACK_BYTES` bytes.
@@ -102,7 +106,15 @@ const BOOTSTRAP_CAPACITY: usize = 1 << 20;
 /// too (they are whole zstd frames), so prefer exact spans for grep and use
 /// coalescing only when the caller filters records afterwards anyway.
 pub fn decompress_frames(input: &[u8], expected_original: u64) -> Result<Vec<u8>, ReadError> {
-    let cap = expected_original + BOMB_SLACK_BYTES;
+    // A forged sidecar/manifest can claim `expected_original` near u64::MAX;
+    // a plain `+` would panic in debug and wrap in release. Reject anything
+    // beyond a sane per-object ceiling before constructing the decoder.
+    if expected_original > MAX_DECOMPRESSED_BYTES {
+        return Err(ReadError::Bomb {
+            cap: MAX_DECOMPRESSED_BYTES,
+        });
+    }
+    let cap = expected_original.saturating_add(BOMB_SLACK_BYTES);
     let decoder = zstd::stream::read::Decoder::new(input)?;
     let mut limited = decoder.take(cap);
     let mut out = Vec::with_capacity((expected_original as usize).min(BOOTSTRAP_CAPACITY));
@@ -221,6 +233,16 @@ mod tests {
         // but must still be refused.
         let err = decompress_frames(bytes, e.original_size - 1).unwrap_err();
         assert!(matches!(err, ReadError::SizeMismatch { .. }), "got {err:?}");
+    }
+
+    #[test]
+    fn huge_expected_original_rejected_not_overflow() {
+        // Forged sidecar claiming a near-u64::MAX size must be refused before
+        // the `+ BOMB_SLACK_BYTES` (no panic in debug, no wrap in release).
+        let err = decompress_frames(&[], u64::MAX).unwrap_err();
+        assert!(matches!(err, ReadError::Bomb { .. }), "got {err:?}");
+        let err = decompress_frames(&[], MAX_DECOMPRESSED_BYTES + 1).unwrap_err();
+        assert!(matches!(err, ReadError::Bomb { .. }), "got {err:?}");
     }
 
     #[test]

@@ -151,29 +151,62 @@ impl ChunkWriter {
         Ok(())
     }
 
-    /// Finalize. Returns `None` if no record was pushed.
-    pub fn finish(mut self) -> Result<Option<EncodedChunk>, ChunkError> {
-        self.cut_frame()?;
-        if self.entries.is_empty() {
+    /// Finalize, consuming the writer. Returns `None` if no record was pushed.
+    pub fn finish(self) -> Result<Option<EncodedChunk>, ChunkError> {
+        self.encode()
+    }
+
+    /// Encode **without consuming** the writer — the buffer stays usable, so
+    /// a caller whose store PUT fails can retry the same writer instead of
+    /// losing the events (gateway flush-failure recovery). The already-cut
+    /// frames are reused; only the uncut `pending` tail is compressed here,
+    /// into a clone, so `self` is untouched.
+    pub fn encode(&self) -> Result<Option<EncodedChunk>, ChunkError> {
+        let mut entries = self.entries.clone();
+        let mut ts_entries = self.ts_entries.clone();
+        let mut body = self.body.clone();
+        let mut original_off = self.original_off;
+        let mut record_count = self.record_count;
+        let mut min_ts = self.min_ts;
+        let mut max_ts = self.max_ts;
+        if !self.pending.is_empty() {
+            let compressed = compress_frame(&self.pending, self.cfg.zstd_level)?;
+            entries.push(FrameIndexEntry {
+                original_offset: original_off,
+                original_size: self.pending.len() as u64,
+                compressed_offset: body.len() as u64,
+                compressed_size: compressed.len() as u64,
+            });
+            ts_entries.push(TsEntry {
+                min_ts: self.pending_min_ts,
+                max_ts: self.pending_max_ts,
+            });
+            original_off += self.pending.len() as u64;
+            body.extend_from_slice(&compressed);
+            record_count += self.pending_records;
+            min_ts = min_ts.min(self.pending_min_ts);
+            max_ts = max_ts.max(self.pending_max_ts);
+        }
+        if entries.is_empty() {
             return Ok(None);
         }
-        let body = Bytes::from(self.body);
+        let body = Bytes::from(body);
         let crc = crc32c::crc32c(&body);
         Ok(Some(EncodedChunk {
             frame_index: FrameIndex {
                 total_padded_size: body.len() as u64,
-                entries: self.entries,
+                entries,
                 source_etag: None,
                 source_compressed_size: None,
                 sse_v3: None,
             },
             ts_index: TsIndex {
-                entries: self.ts_entries,
+                entries: ts_entries,
             },
-            record_count: self.record_count,
-            uncompressed_bytes: self.original_off,
-            min_timestamp: self.min_ts,
-            max_timestamp: self.max_ts,
+            record_count,
+            uncompressed_bytes: original_off,
+            min_timestamp: min_ts,
+            max_timestamp: max_ts,
             crc32c: crc,
             body,
         }))
@@ -231,6 +264,23 @@ mod tests {
             .collect();
         assert_eq!(lines.len(), 2);
         assert_eq!(LogRecord::from_jsonl(lines[0]).unwrap().message, "hello");
+    }
+
+    #[test]
+    fn encode_does_not_consume_and_matches_finish() {
+        let mut w = ChunkWriter::new(ChunkConfig::default());
+        w.push(&rec(100, "hello")).unwrap();
+        w.push(&rec(50, "world")).unwrap();
+        // encode() borrows: the writer stays usable afterwards (the gateway
+        // relies on this to retry a failed flush without losing events).
+        let a = w.encode().unwrap().unwrap();
+        let b = w.encode().unwrap().unwrap();
+        assert_eq!(a.body, b.body, "repeated encode is stable");
+        assert_eq!(a.record_count, 2);
+        // …and a subsequent push still works.
+        w.push(&rec(75, "more")).unwrap();
+        let c = w.finish().unwrap().unwrap();
+        assert_eq!(c.record_count, 3);
     }
 
     #[test]

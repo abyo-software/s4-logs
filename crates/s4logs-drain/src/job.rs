@@ -25,6 +25,7 @@ use thiserror::Error;
 use crate::cw::{CwError, CwSource};
 use crate::manifest::{
     DRAIN_VERSION, MANIFEST_VERSION, Manifest, ManifestError, ManifestObject, ManifestStore,
+    manifest_covers_window,
 };
 use crate::progress::{Progress, ProgressEvent};
 use crate::shard::{MAX_STREAMS_PER_FILTER, event_pages, partition_streams};
@@ -454,7 +455,14 @@ impl DrainJob {
             w.start_ms,
             w.end_ms,
         );
-        if self.manifests.exists(&mkey).await? {
+        // Skip only on a manifest that actually decodes into a matching,
+        // version-checked record for this window — a corrupt/partial object
+        // at the key must NOT mask an unarchived window (it would be skipped
+        // forever and could later satisfy the retention gate). A bad manifest
+        // is re-drained, overwriting it deterministically.
+        if let Some(bytes) = self.manifests.get(&mkey).await?
+            && manifest_covers_window(&bytes, &opts.account, &opts.log_group, w.start_ms, w.end_ms)
+        {
             tracing::debug!(log_group = %opts.log_group, window_start_ms = w.start_ms, "manifest exists; skipping window");
             opts.progress
                 .emit(|| ProgressEvent::WindowSkipped { window: w });
@@ -663,6 +671,26 @@ mod tests {
         }
     }
 
+    /// A valid (decodable, matching) manifest for one window — the skip path
+    /// now requires this, not just any object at the key.
+    fn valid_manifest(start_ms: i64, end_ms: i64) -> Bytes {
+        Manifest {
+            version: MANIFEST_VERSION,
+            account: ACCT.into(),
+            log_group: GROUP.into(),
+            window_start_ms: start_ms,
+            window_end_ms: end_ms,
+            objects: Vec::new(),
+            record_count: 0,
+            completed_at_ms: 0,
+            drain_version: DRAIN_VERSION.into(),
+            reconciled_at_ms: None,
+            reconciled_added: None,
+        }
+        .to_json_bytes()
+        .unwrap()
+    }
+
     #[tokio::test]
     async fn pagination_rotation_and_manifest() {
         // 100 events in one hour window, small pages + small chunk target →
@@ -730,7 +758,7 @@ mod tests {
         manifests
             .put(
                 &manifest_key("s4logs", ACCT, GROUP, DAY0, DAY0 + HOUR_MS),
-                Bytes::from_static(b"{}"),
+                valid_manifest(DAY0, DAY0 + HOUR_MS),
             )
             .await
             .unwrap();
@@ -749,7 +777,7 @@ mod tests {
         manifests
             .put(
                 &manifest_key("s4logs", ACCT, GROUP, DAY0, DAY0 + HOUR_MS),
-                Bytes::from_static(b"{}"),
+                valid_manifest(DAY0, DAY0 + HOUR_MS),
             )
             .await
             .unwrap();
@@ -1230,7 +1258,7 @@ mod tests {
         manifests
             .put(
                 &manifest_key("s4logs", ACCT, GROUP, DAY0, DAY0 + HOUR_MS),
-                Bytes::from_static(b"{}"),
+                valid_manifest(DAY0, DAY0 + HOUR_MS),
             )
             .await
             .unwrap();

@@ -75,6 +75,13 @@ impl AppState {
 /// `tower::ServiceExt::oneshot`). The SigV4 layer wraps only the API route
 /// added before it — `/health`, `/ready`, `/metrics` are added after and
 /// stay exempt (DESIGN.md §11.2).
+/// Maximum accepted request body. CloudWatch `PutLogEvents` caps a batch at
+/// 1,048,576 bytes; 8 MiB leaves generous headroom for JSON overhead while
+/// bounding the pre-auth allocation a client can force (a large body would
+/// otherwise be buffered to compute the SigV4 payload hash *before* the
+/// signature is checked — an unauthenticated memory-DoS).
+pub const MAX_REQUEST_BODY_BYTES: usize = 8 << 20;
+
 pub fn build_app(state: AppState) -> Router {
     Router::new()
         .route("/", post(dispatch))
@@ -82,6 +89,8 @@ pub fn build_app(state: AppState) -> Router {
             state.clone(),
             auth_middleware,
         ))
+        // Bounds the `Bytes` extractor on the auth-None dispatch path too.
+        .layer(axum::extract::DefaultBodyLimit::max(MAX_REQUEST_BODY_BYTES))
         .route("/health", get(|| async { "ok" }))
         .route("/ready", get(ready))
         .route("/metrics", get(metrics_endpoint))
@@ -99,11 +108,19 @@ async fn auth_middleware(State(state): State<AppState>, req: Request, next: Next
         return next.run(req).await;
     };
     let (parts, body) = req.into_parts();
-    let bytes = match axum::body::to_bytes(body, usize::MAX).await {
+    // Bound the pre-auth buffering: an unauthenticated client must not be able
+    // to force an arbitrarily large allocation before the signature check.
+    let bytes = match axum::body::to_bytes(body, MAX_REQUEST_BODY_BYTES).await {
         Ok(bytes) => bytes,
         Err(err) => {
-            return ApiError::internal_failure(format!("request body read failed: {err}"))
-                .into_response();
+            return ApiError::new(
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "RequestEntityTooLargeException",
+                format!(
+                    "request body exceeds {MAX_REQUEST_BODY_BYTES} bytes or read failed: {err}"
+                ),
+            )
+            .into_response();
         }
     };
     let verdict = auth::verify(
