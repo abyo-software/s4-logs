@@ -62,19 +62,14 @@ jobs:
       - name: Build (cross)
         if: ${{ matrix.use_cross }}
         run: cross build --release -p s4logs-cli --bin s4logs --target ${{ matrix.target }}
-      - name: Package (strip + tar.gz + sha256)
+      - name: Package (tar.gz + sha256)
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME}"
           BIN="target/${{ matrix.target }}/release/s4logs"
-          # llvm-strip is architecture-agnostic (host strip cannot strip the
-          # cross-built aarch64 ELF). It ships on ubuntu-latest; fall back to
-          # GNU strip for the native x86_64 build if it is ever missing.
-          if command -v llvm-strip >/dev/null 2>&1; then
-            llvm-strip "$BIN"
-          else
-            strip "$BIN"
-          fi
+          # Binaries are already symbol-stripped by `[profile.release]
+          # strip = "symbols"` — no external strip needed (GNU strip on the
+          # host can't read the cross-built aarch64 ELF).
           STAGE="s4logs-${VERSION}-${{ matrix.target }}"
           mkdir -p "$STAGE"
           cp "$BIN" LICENSE NOTICE README.md "$STAGE/"

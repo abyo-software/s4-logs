@@ -9,7 +9,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.4.0"
+version = "0.4.1"
 edition = "2024"
 rust-version = "1.92"
 license = "Apache-2.0"
@@ -62,6 +62,11 @@ unwrap_used = "deny"
 
 [profile.release]
 lto = "thin"
+# Strip symbols at link time so the release workflow needs no external
+# `strip`/`llvm-strip` — the cross container and the host both honor this,
+# which fixes the aarch64 packaging step (GNU strip can't read the
+# cross-built ARM ELF). v0.4.0 release-job fix.
+strip = "symbols"
 
 # `cargo bolero test --engine libfuzzer` defaults to `--profile fuzz` (s4 と
 # 同じ規約 — evo-x2 farm の run-s4logs-fuzz.sh が依存)。Inherit from
