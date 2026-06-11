@@ -43,6 +43,17 @@ pub struct ManifestObject {
     /// objects without it are reported as "raw size unknown".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub raw_bytes: Option<u64>,
+    /// S3 storage class the data object was written to (`STANDARD`,
+    /// `STANDARD_IA`, `GLACIER_IR`), copied from
+    /// [`s4logs_core::sink::PutReceipt::storage_class`]. Optional + skipped
+    /// when absent — the same byte-compat discipline as `raw_bytes`:
+    /// manifests written before wave 5L (and any object drained without
+    /// `--storage-class`, which leaves the receipt's class `None`) decode to
+    /// `None`, old readers ignore the field, and a `None` re-encodes
+    /// byte-identically. `s4logs report` prices the S3 side per-class from
+    /// this; objects without it fall back to S3 Standard.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub storage_class: Option<String>,
     pub record_count: u64,
     /// Min/max event timestamp in the object, epoch ms.
     pub min_ts: i64,
@@ -303,6 +314,7 @@ mod tests {
                 crc32c: 305_419_896,
                 body_len: 1024,
                 raw_bytes: Some(8192),
+                storage_class: None,
                 record_count: 10,
                 min_ts: 1_717_545_600_001,
                 max_ts: 1_717_549_199_999,
@@ -333,10 +345,15 @@ mod tests {
         let legacy = r#"{"version":1,"account":"a","log_group":"/g","window_start_ms":0,"window_end_ms":1,"objects":[{"data_key":"k","etag":null,"crc32c":1,"body_len":2,"record_count":3,"min_ts":0,"max_ts":0}],"record_count":3,"completed_at_ms":9,"drain_version":"old"}"#;
         let m = Manifest::from_json_bytes(legacy.as_bytes()).unwrap();
         assert_eq!(m.objects[0].raw_bytes, None);
+        assert_eq!(m.objects[0].storage_class, None);
         assert_eq!(m.reconciled_at_ms, None);
         assert_eq!(m.reconciled_added, None);
         let re = String::from_utf8(m.to_json_bytes().unwrap().to_vec()).unwrap();
         assert!(!re.contains("raw_bytes"), "None must stay omitted: {re}");
+        assert!(
+            !re.contains("storage_class"),
+            "None must stay omitted: {re}"
+        );
         assert!(!re.contains("reconciled"), "None must stay omitted: {re}");
         // Byte-identical re-encode: legacy manifests pass through untouched.
         assert_eq!(re, legacy);
@@ -357,6 +374,22 @@ mod tests {
                 r#""drain_version":"test","reconciled_at_ms":1717551111000,"reconciled_added":34}"#
             ),
             "reconcile fields must serialize after drain_version: {json}"
+        );
+        let back = Manifest::from_json_bytes(json.as_bytes()).unwrap();
+        assert_eq!(back, m);
+    }
+
+    /// Golden test for the wave-5L `storage_class` field: exact name and
+    /// placement (after `raw_bytes`, before `record_count`) are part of the
+    /// on-disk format, and a populated class round-trips.
+    #[test]
+    fn manifest_with_storage_class_golden_and_roundtrip() {
+        let mut m = sample();
+        m.objects[0].storage_class = Some("GLACIER_IR".to_owned());
+        let json = String::from_utf8(m.to_json_bytes().unwrap().to_vec()).unwrap();
+        assert!(
+            json.contains(r#""raw_bytes":8192,"storage_class":"GLACIER_IR","record_count":10"#),
+            "storage_class must serialize after raw_bytes: {json}"
         );
         let back = Manifest::from_json_bytes(json.as_bytes()).unwrap();
         assert_eq!(back, m);

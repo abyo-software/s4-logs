@@ -318,6 +318,10 @@ impl<'a> WindowWriter<'a> {
                 crc32c: receipt.crc32c,
                 body_len: receipt.body_len,
                 raw_bytes: Some(chunk.uncompressed_bytes),
+                // `None` when drained without `--storage-class` (the sink
+                // omits the header → bucket default Standard); recorded so
+                // `s4logs report` can price the S3 side per-class.
+                storage_class: receipt.storage_class,
                 record_count: chunk.record_count,
                 min_ts: chunk.min_timestamp,
                 max_ts: chunk.max_timestamp,

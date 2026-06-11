@@ -849,6 +849,7 @@ mod tests {
                 crc32c: receipt.crc32c,
                 body_len: receipt.body_len,
                 raw_bytes: None, // legacy entry: exercises the decode_all path
+                storage_class: None,
                 record_count: 3,
                 min_ts: DAY0,
                 max_ts: DAY0 + 2000,
@@ -981,6 +982,7 @@ mod tests {
             crc32c: 0,
             body_len: 0,
             raw_bytes: None,
+            storage_class: None,
             record_count: 0,
             min_ts: 0,
             max_ts: 0,

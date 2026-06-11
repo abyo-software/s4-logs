@@ -262,13 +262,22 @@ impl StorageClassArg {
 }
 
 #[derive(Debug, Args)]
+#[command(group = clap::ArgGroup::new("groups").required(true).multiple(false))]
 pub struct GrepArgs {
     /// Regex applied to each record's message
     pub pattern: String,
 
-    /// Archived log group to search
-    #[arg(long)]
-    pub log_group: String,
+    /// Archived log group to search — exact name or glob (globset syntax,
+    /// e.g. "/aws/lambda/*"; same semantics as drain/report). An exact name
+    /// reads S3 only (no CloudWatch); a glob enumerates groups via
+    /// DescribeLogGroups first
+    #[arg(long, group = "groups")]
+    pub log_group: Option<String>,
+
+    /// Search every archived log group in the account (DescribeLogGroups
+    /// enumeration)
+    #[arg(long, group = "groups")]
+    pub all: bool,
 
     /// Range start, inclusive (RFC3339 or epoch ms)
     #[arg(long, value_parser = timearg::parse_time_ms)]
@@ -285,10 +294,19 @@ pub struct GrepArgs {
 
 #[derive(Debug, Args)]
 #[command(group = clap::ArgGroup::new("target").required(true).multiple(false))]
+#[command(group = clap::ArgGroup::new("groups").required(true).multiple(false))]
 pub struct RestoreArgs {
-    /// Archived log group to restore from
-    #[arg(long)]
-    pub log_group: String,
+    /// Archived log group to restore from — exact name or glob (globset
+    /// syntax; same semantics as drain/report). An exact name reads S3 only
+    /// (no CloudWatch); a glob enumerates groups via DescribeLogGroups first.
+    /// With multiple source groups and --to-log-group, events funnel into the
+    /// single target group and the wrap JSON records "original_log_group"
+    #[arg(long, group = "groups")]
+    pub log_group: Option<String>,
+
+    /// Restore from every archived log group in the account
+    #[arg(long, group = "groups")]
+    pub all: bool,
 
     /// Range start, inclusive (RFC3339 or epoch ms)
     #[arg(long, value_parser = timearg::parse_time_ms)]
@@ -602,6 +620,147 @@ mod tests {
             }
             other => panic!("expected report, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn grep_accepts_glob_and_all_and_rejects_both() {
+        // Exact name still parses (the read-only-S3 fast path).
+        let exact = Cli::try_parse_from([
+            "s4logs",
+            "grep",
+            "ERR",
+            "--log-group",
+            "/g",
+            "--from",
+            "0",
+            "--to",
+            "1",
+        ])
+        .unwrap();
+        match exact.cmd {
+            Cmd::Grep(g) => {
+                assert_eq!(g.log_group.as_deref(), Some("/g"));
+                assert!(!g.all);
+            }
+            other => panic!("expected grep, got {other:?}"),
+        }
+        // Glob parses into the same field.
+        let glob = Cli::try_parse_from([
+            "s4logs",
+            "grep",
+            "ERR",
+            "--log-group",
+            "/aws/lambda/*",
+            "--from",
+            "0",
+            "--to",
+            "1",
+        ])
+        .unwrap();
+        match glob.cmd {
+            Cmd::Grep(g) => assert_eq!(g.log_group.as_deref(), Some("/aws/lambda/*")),
+            other => panic!("expected grep, got {other:?}"),
+        }
+        // --all parses.
+        let all =
+            Cli::try_parse_from(["s4logs", "grep", "ERR", "--all", "--from", "0", "--to", "1"])
+                .unwrap();
+        match all.cmd {
+            Cmd::Grep(g) => assert!(g.all),
+            other => panic!("expected grep, got {other:?}"),
+        }
+        // A group selector is required, and the two are mutually exclusive.
+        assert!(
+            Cli::try_parse_from(["s4logs", "grep", "ERR", "--from", "0", "--to", "1"]).is_err()
+        );
+        assert!(
+            Cli::try_parse_from([
+                "s4logs",
+                "grep",
+                "ERR",
+                "--log-group",
+                "/g",
+                "--all",
+                "--from",
+                "0",
+                "--to",
+                "1",
+            ])
+            .is_err(),
+            "--log-group and --all are exclusive"
+        );
+    }
+
+    #[test]
+    fn restore_accepts_glob_and_all_and_keeps_target_group() {
+        // --all + --to-log-group: source selector and target group coexist.
+        let all = Cli::try_parse_from([
+            "s4logs",
+            "restore",
+            "--all",
+            "--from",
+            "0",
+            "--to",
+            "1",
+            "--to-log-group",
+            "/restored",
+        ])
+        .unwrap();
+        match all.cmd {
+            Cmd::Restore(r) => {
+                assert!(r.all);
+                assert!(r.log_group.is_none());
+                assert_eq!(r.to_log_group.as_deref(), Some("/restored"));
+            }
+            other => panic!("expected restore, got {other:?}"),
+        }
+        // Glob source + stdout target.
+        let glob = Cli::try_parse_from([
+            "s4logs",
+            "restore",
+            "--log-group",
+            "/aws/lambda/*",
+            "--from",
+            "0",
+            "--to",
+            "1",
+            "--to-stdout",
+        ])
+        .unwrap();
+        match glob.cmd {
+            Cmd::Restore(r) => assert_eq!(r.log_group.as_deref(), Some("/aws/lambda/*")),
+            other => panic!("expected restore, got {other:?}"),
+        }
+        // A source selector is still required; both are exclusive.
+        assert!(
+            Cli::try_parse_from([
+                "s4logs",
+                "restore",
+                "--from",
+                "0",
+                "--to",
+                "1",
+                "--to-stdout"
+            ])
+            .is_err(),
+            "a source group selector is required"
+        );
+        assert!(
+            Cli::try_parse_from([
+                "s4logs",
+                "restore",
+                "--log-group",
+                "/g",
+                "--all",
+                "--from",
+                "0",
+                "--to",
+                "1",
+                "--to-stdout",
+            ])
+            .is_err(),
+            "--log-group and --all are exclusive"
+        );
     }
 
     #[test]

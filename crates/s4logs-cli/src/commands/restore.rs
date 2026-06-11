@@ -3,9 +3,12 @@
 //!
 //! Re-ingest default wraps each message as
 //! `{"original_timestamp":..,"original_stream":..,"message":..}` with event
-//! timestamp = now (PutLogEvents rejects events older than 14 days).
-//! `--raw` sends original timestamps unmodified — CloudWatch WILL reject
-//! anything older than 14 days; rejects are reported per batch, not retried.
+//! timestamp = now (PutLogEvents rejects events older than 14 days). When the
+//! restore spans **multiple** source groups (glob / `--all`), the wrap also
+//! carries `"original_log_group"` so the funneled-into-one-target events stay
+//! attributable. `--raw` sends original timestamps unmodified — CloudWatch
+//! WILL reject anything older than 14 days; rejects are reported per batch,
+//! not retried.
 
 use std::io::Write;
 use std::time::Duration;
@@ -18,7 +21,8 @@ use s4logs_core::store::ObjectStore;
 
 use crate::aws;
 use crate::cli::{GlobalArgs, RestoreArgs, UsageError};
-use crate::scan::{ScanStats, open_scan, scan_log_group};
+use crate::commands::resolve_source_groups;
+use crate::scan::{ScanStats, open_scan_multi, scan_log_groups};
 use crate::timearg::fmt_ts;
 
 /// All re-ingested events land in this single stream (documented contract).
@@ -61,6 +65,8 @@ pub async fn run(global: &GlobalArgs, args: &RestoreArgs) -> Result<()> {
     let bucket = global.require_bucket()?;
     let account = global.require_account()?;
     let clients = aws::load(global).await;
+    // Exact name → pure S3 read (no CW); glob/--all → DescribeLogGroups first.
+    let groups = resolve_source_groups(&clients, args.log_group.as_deref(), args.all).await?;
     let store = ObjectStore::new(clients.s3(), bucket, &global.prefix);
     let range = TimeRange {
         from_ms: args.from,
@@ -70,14 +76,14 @@ pub async fn run(global: &GlobalArgs, args: &RestoreArgs) -> Result<()> {
     let stats = if args.to_stdout {
         let stdout = std::io::stdout();
         let mut w = std::io::BufWriter::new(stdout.lock());
-        let stats = write_jsonl(&store, &account, &args.log_group, range, &mut w).await?;
+        let stats = write_jsonl(&store, &account, &groups, range, &mut w).await?;
         w.flush().context("flushing stdout")?;
         stats
     } else if let Some(path) = &args.to_file {
         let file =
             std::fs::File::create(path).with_context(|| format!("creating {}", path.display()))?;
         let mut w = std::io::BufWriter::new(file);
-        let stats = write_jsonl(&store, &account, &args.log_group, range, &mut w).await?;
+        let stats = write_jsonl(&store, &account, &groups, range, &mut w).await?;
         w.flush()
             .with_context(|| format!("flushing {}", path.display()))?;
         stats
@@ -86,7 +92,7 @@ pub async fn run(global: &GlobalArgs, args: &RestoreArgs) -> Result<()> {
             &clients,
             &store,
             &account,
-            &args.log_group,
+            &groups,
             target_group,
             range,
             args.raw,
@@ -112,15 +118,18 @@ pub async fn run(global: &GlobalArgs, args: &RestoreArgs) -> Result<()> {
     Ok(())
 }
 
-/// Stream raw JSONL records (on-disk schema, time-filtered) to `w`.
+/// Stream raw JSONL records (on-disk schema, time-filtered) to `w`. Across
+/// multiple source groups the records interleave in global timestamp order;
+/// the on-disk schema is unchanged (the source group is not injected here —
+/// only the CloudWatch wrap path records `original_log_group`).
 async fn write_jsonl(
     store: &ObjectStore,
     account: &str,
-    log_group: &str,
+    log_groups: &[String],
     range: TimeRange,
     w: &mut impl Write,
 ) -> Result<ScanStats> {
-    scan_log_group(store, account, log_group, range, None, |rec| {
+    scan_log_groups(store, account, log_groups, range, None, |rec, _group| {
         serde_json::to_writer(&mut *w, rec)?;
         w.write_all(b"\n")?;
         Ok(())
@@ -146,13 +155,21 @@ pub fn event_cost(message: &str) -> usize {
 
 /// Default (wrapped) re-ingest message. Key order is serde_json's BTreeMap
 /// order; the shape, not the order, is the contract.
-pub fn wrap_message(rec: &LogRecord) -> String {
-    serde_json::json!({
-        "original_timestamp": rec.timestamp,
-        "original_stream": rec.stream,
-        "message": rec.message,
-    })
-    .to_string()
+///
+/// `original_log_group` is added **only** when the restore funnels more than
+/// one source group into a single target (glob / `--all` with
+/// `--to-log-group`): a single-group restore re-ingests byte-identically to
+/// the pre-wave-5L wrap (three fields, no `original_log_group`), so existing
+/// consumers are unaffected.
+pub fn wrap_message(rec: &LogRecord, original_log_group: Option<&str>) -> String {
+    let mut obj = serde_json::Map::new();
+    obj.insert("original_timestamp".into(), rec.timestamp.into());
+    obj.insert("original_stream".into(), rec.stream.clone().into());
+    if let Some(group) = original_log_group {
+        obj.insert("original_log_group".into(), group.into());
+    }
+    obj.insert("message".into(), rec.message.clone().into());
+    serde_json::Value::Object(obj).to_string()
 }
 
 /// Streaming PutLogEvents batcher (DESIGN.md §11.3): feed time-ordered
@@ -317,7 +334,7 @@ async fn restore_to_log_group(
     clients: &aws::AwsClients,
     store: &ObjectStore,
     account: &str,
-    source_group: &str,
+    source_groups: &[String],
     target_group: &str,
     range: TimeRange,
     raw: bool,
@@ -330,15 +347,26 @@ async fn restore_to_log_group(
              Rejected events are reported per batch and NOT retried."
         );
     }
+    // With several source groups, all events funnel into the single
+    // --to-log-group target; the wrap records original_log_group so they stay
+    // attributable. A single source group keeps the byte-identical 3-field
+    // wrap. (`--raw` carries no wrap, so the group is not recorded there.)
+    let tag_group = source_groups.len() > 1;
+    if tag_group && raw {
+        eprintln!(
+            "warning: --raw across multiple source groups loses the original log group \
+             (raw events carry no wrap); drop --raw to record original_log_group"
+        );
+    }
     let cutoff = now - CW_INGEST_MAX_AGE_MS;
     let cw = clients.cwl();
 
     // Streaming re-ingest (DESIGN.md §11.3): the k-way merged scan is
-    // already timestamp-ascending (PutLogEvents requires chronological
-    // batches), so events flow scan → batcher → PutLogEvents with memory
-    // bounded by one in-flight batch + the scan's per-chunk frame buffers —
-    // no `Vec<all records>`.
-    let mut scan = open_scan(store, account, source_group, range, None).await?;
+    // already timestamp-ascending across every source group (PutLogEvents
+    // requires chronological batches), so events flow scan → batcher →
+    // PutLogEvents with memory bounded by one in-flight batch + the scan's
+    // per-chunk frame buffers — no `Vec<all records>`.
+    let mut scan = open_scan_multi(store, account, source_groups, range, None).await?;
     let mut batcher = EventBatcher::new();
     let mut sender = BatchSender {
         cw: &cw,
@@ -351,11 +379,11 @@ async fn restore_to_log_group(
     let mut oversized = 0u64;
     let mut raw_too_old = 0u64;
     let mut total = 0u64;
-    while let Some(rec) = scan.next().await? {
+    while let Some((rec, group)) = scan.next_with_group().await? {
         let (timestamp, message) = if raw {
             (rec.timestamp, rec.message)
         } else {
-            (now, wrap_message(&rec))
+            (now, wrap_message(&rec, tag_group.then_some(group)))
         };
         if event_cost(&message) > MAX_BATCH_BYTES {
             oversized += 1;
@@ -522,13 +550,28 @@ mod tests {
             ingestion_time: Some(1),
             event_id: Some("e".into()),
         };
-        let wrapped = wrap_message(&rec);
+        // Single-group restore: byte-identical 3-field wrap (no group).
+        let wrapped = wrap_message(&rec, None);
         let v: serde_json::Value = serde_json::from_str(&wrapped).unwrap();
         let obj = v.as_object().unwrap();
         assert_eq!(obj.len(), 3, "exactly the three contract fields: {wrapped}");
         assert_eq!(obj["original_timestamp"], 1_717_900_000_123i64);
         assert_eq!(obj["original_stream"], "app/i-0abc");
         assert_eq!(obj["message"], "hello \"quoted\" world");
+        assert!(
+            !wrapped.contains("original_log_group"),
+            "single-group wrap must omit original_log_group: {wrapped}"
+        );
+
+        // Multi-group restore: adds original_log_group, keeps the others.
+        let tagged = wrap_message(&rec, Some("/aws/lambda/payments"));
+        let tv: serde_json::Value = serde_json::from_str(&tagged).unwrap();
+        let tobj = tv.as_object().unwrap();
+        assert_eq!(tobj.len(), 4, "four fields when group-tagged: {tagged}");
+        assert_eq!(tobj["original_log_group"], "/aws/lambda/payments");
+        assert_eq!(tobj["original_timestamp"], 1_717_900_000_123i64);
+        assert_eq!(tobj["original_stream"], "app/i-0abc");
+        assert_eq!(tobj["message"], "hello \"quoted\" world");
     }
 
     #[test]

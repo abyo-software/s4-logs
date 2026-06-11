@@ -19,6 +19,29 @@ use s4logs_drain::{
 };
 use serde::Serialize;
 
+// S3 storage list prices, USD per GiB-month, us-east-1 (2026-06, AWS pricing
+// page). Only the instant-access tiers s4logs can write are listed; the
+// Standard price is shared with the drain (`S3_STORAGE_USD_PER_GIB_MONTH`).
+// These price *storage only* — retrieval / request / per-object-minimum
+// charges are out of scope, as the report's own Limitations note says.
+/// Canonical S3 storage-class label → storage price per GiB-month.
+const S3_STANDARD_IA_USD_PER_GIB_MONTH: f64 = 0.0125;
+const S3_GLACIER_IR_USD_PER_GIB_MONTH: f64 = 0.004;
+
+/// Price one object's compressed bytes by its recorded storage class. An
+/// absent class (legacy manifest, or an object drained without
+/// `--storage-class`) bills at S3 Standard. Unknown labels also fall back to
+/// Standard rather than guessing — a forward-compatible class we don't price
+/// yet must not silently read as free.
+fn s3_price_per_gib_month(storage_class: Option<&str>) -> f64 {
+    match storage_class {
+        Some("STANDARD_IA") => S3_STANDARD_IA_USD_PER_GIB_MONTH,
+        Some("GLACIER_IR") => S3_GLACIER_IR_USD_PER_GIB_MONTH,
+        // "STANDARD", None, or any forward-compatible label.
+        _ => S3_STORAGE_USD_PER_GIB_MONTH,
+    }
+}
+
 use crate::aws;
 use crate::cli::{GlobalArgs, ReportArgs, ReportOutput, UsageError};
 use crate::timearg::{fmt_ts, format_bytes};
@@ -37,9 +60,17 @@ pub struct GroupReport {
     /// estimate excludes their CloudWatch side (lower bound).
     pub objects_missing_raw: u64,
     pub compressed_bytes: u64,
+    /// Objects with no recorded storage class (legacy manifest or drained
+    /// without `--storage-class`); their S3 cost is priced at Standard.
+    pub objects_assumed_standard: u64,
+    /// Compressed bytes per storage-class label (`STANDARD`, `STANDARD_IA`,
+    /// `GLACIER_IR`); objects with no recorded class are folded into
+    /// `STANDARD`. Drives the per-class breakdown line when classes are mixed.
+    pub bytes_by_class: BTreeMap<String, u64>,
     /// raw / compressed, only when every object reports its raw size.
     pub compression_ratio: Option<f64>,
     pub cw_monthly_usd: f64,
+    /// Blended S3 storage cost: each object priced by its recorded class.
     pub s3_monthly_usd: f64,
     pub est_monthly_savings_usd: f64,
     /// First covered window start / last covered window end (epoch ms).
@@ -72,6 +103,8 @@ fn aggregate_group(log_group: String, manifests: &[Manifest]) -> GroupReport {
         raw_bytes: 0,
         objects_missing_raw: 0,
         compressed_bytes: 0,
+        objects_assumed_standard: 0,
+        bytes_by_class: BTreeMap::new(),
         compression_ratio: None,
         cw_monthly_usd: 0.0,
         s3_monthly_usd: 0.0,
@@ -87,6 +120,13 @@ fn aggregate_group(log_group: String, manifests: &[Manifest]) -> GroupReport {
         for o in &m.objects {
             g.objects += 1;
             g.compressed_bytes += o.body_len;
+            // An absent class bills at Standard, and is folded into the
+            // STANDARD bucket so the breakdown still sums to the total.
+            let class = o.storage_class.as_deref().unwrap_or("STANDARD");
+            *g.bytes_by_class.entry(class.to_owned()).or_default() += o.body_len;
+            if o.storage_class.is_none() {
+                g.objects_assumed_standard += 1;
+            }
             match o.raw_bytes {
                 Some(raw) => g.raw_bytes += raw,
                 None => g.objects_missing_raw += 1,
@@ -111,7 +151,12 @@ fn finish_pricing(g: &mut GroupReport) {
     // CW bills archived storage on gzip-compressed bytes (pricing footnote),
     // estimated via CW_ASSUMED_GZIP_RATIO — see s4logs-drain::job.
     g.cw_monthly_usd = gib(g.raw_bytes) / CW_ASSUMED_GZIP_RATIO * CW_STORAGE_USD_PER_GIB_MONTH;
-    g.s3_monthly_usd = gib(g.compressed_bytes) * S3_STORAGE_USD_PER_GIB_MONTH;
+    // Blended S3 cost: each storage class's bytes at its own list price.
+    g.s3_monthly_usd = g
+        .bytes_by_class
+        .iter()
+        .map(|(class, bytes)| gib(*bytes) * s3_price_per_gib_month(Some(class.as_str())))
+        .sum();
     g.est_monthly_savings_usd = g.cw_monthly_usd - g.s3_monthly_usd;
     g.compression_ratio = (g.objects_missing_raw == 0 && g.raw_bytes > 0 && g.compressed_bytes > 0)
         .then(|| g.raw_bytes as f64 / g.compressed_bytes as f64);
@@ -131,6 +176,8 @@ fn build_summary(scope: String, by_group: BTreeMap<String, Vec<Manifest>>) -> Re
         raw_bytes: 0,
         objects_missing_raw: 0,
         compressed_bytes: 0,
+        objects_assumed_standard: 0,
+        bytes_by_class: BTreeMap::new(),
         compression_ratio: None,
         cw_monthly_usd: 0.0,
         s3_monthly_usd: 0.0,
@@ -146,6 +193,10 @@ fn build_summary(scope: String, by_group: BTreeMap<String, Vec<Manifest>>) -> Re
         total.raw_bytes += g.raw_bytes;
         total.objects_missing_raw += g.objects_missing_raw;
         total.compressed_bytes += g.compressed_bytes;
+        total.objects_assumed_standard += g.objects_assumed_standard;
+        for (class, bytes) in &g.bytes_by_class {
+            *total.bytes_by_class.entry(class.clone()).or_default() += bytes;
+        }
         total.coverage_gaps += g.coverage_gaps;
     }
     finish_pricing(&mut total);
@@ -215,6 +266,22 @@ fn group_lines(g: &GroupReport) -> Vec<String> {
         "  est. monthly storage: CloudWatch ${:.4} (gzip-billed, ~4x assumed) -> S3 ${:.4} (saves ${:.4}/month){floor}",
         g.cw_monthly_usd, g.s3_monthly_usd, g.est_monthly_savings_usd
     ));
+    // Break the S3 line down when more than one class is present (a single
+    // class — the common case — needs no breakdown).
+    if g.bytes_by_class.len() > 1 {
+        let parts: Vec<String> = g
+            .bytes_by_class
+            .iter()
+            .map(|(class, bytes)| format!("{class} {}", format_bytes(*bytes)))
+            .collect();
+        lines.push(format!("    S3 by class: {}", parts.join(", ")));
+    }
+    if g.objects_assumed_standard > 0 {
+        lines.push(format!(
+            "    note: {} object(s) assume Standard (pre-storage-class manifest)",
+            g.objects_assumed_standard
+        ));
+    }
     lines
 }
 
@@ -292,12 +359,22 @@ mod tests {
     const HOUR: i64 = 3_600_000;
 
     fn obj(body_len: u64, raw_bytes: Option<u64>, record_count: u64) -> ManifestObject {
+        obj_class(body_len, raw_bytes, record_count, None)
+    }
+
+    fn obj_class(
+        body_len: u64,
+        raw_bytes: Option<u64>,
+        record_count: u64,
+        storage_class: Option<&str>,
+    ) -> ManifestObject {
         ManifestObject {
             data_key: "k".into(),
             etag: None,
             crc32c: 0,
             body_len,
             raw_bytes,
+            storage_class: storage_class.map(str::to_owned),
             record_count,
             min_ts: DAY0,
             max_ts: DAY0 + 1,
@@ -354,6 +431,59 @@ mod tests {
         assert!((g.cw_monthly_usd - 0.075).abs() < 1e-9);
         assert!((g.s3_monthly_usd - 0.046).abs() < 1e-9);
         assert!((g.est_monthly_savings_usd - 0.029).abs() < 1e-9);
+    }
+
+    #[test]
+    fn prices_per_storage_class_and_blends_mixed() {
+        // 1 GiB STANDARD ($0.023) + 1 GiB STANDARD_IA ($0.0125) + 1 GiB
+        // GLACIER_IR ($0.004) = $0.0395 blended.
+        let manifests = vec![manifest(
+            "/g",
+            DAY0,
+            DAY0 + HOUR,
+            vec![
+                obj_class(1 << 30, Some(1 << 30), 1, Some("STANDARD")),
+                obj_class(1 << 30, Some(1 << 30), 1, Some("STANDARD_IA")),
+                obj_class(1 << 30, Some(1 << 30), 1, Some("GLACIER_IR")),
+            ],
+        )];
+        let g = aggregate_group("/g".into(), &manifests);
+        assert_eq!(g.compressed_bytes, 3 << 30);
+        assert_eq!(g.objects_assumed_standard, 0);
+        assert!(
+            (g.s3_monthly_usd - (0.023 + 0.0125 + 0.004)).abs() < 1e-9,
+            "blended per-class S3 price, got {}",
+            g.s3_monthly_usd
+        );
+        let text = group_lines(&g).join("\n");
+        assert!(text.contains("S3 by class:"), "{text}");
+        assert!(text.contains("GLACIER_IR"), "{text}");
+        assert!(!text.contains("assume Standard"), "{text}");
+    }
+
+    #[test]
+    fn legacy_objects_assume_standard_and_note() {
+        // No recorded class → priced at Standard, counted, and noted.
+        let manifests = vec![manifest(
+            "/g",
+            DAY0,
+            DAY0 + HOUR,
+            vec![obj_class(2 << 30, Some(2 << 30), 1, None)],
+        )];
+        let g = aggregate_group("/g".into(), &manifests);
+        assert_eq!(g.objects_assumed_standard, 1);
+        assert!(
+            (g.s3_monthly_usd - 2.0 * 0.023).abs() < 1e-9,
+            "legacy objects bill at Standard, got {}",
+            g.s3_monthly_usd
+        );
+        // Single class (folded STANDARD) → no breakdown line, but a note.
+        let text = group_lines(&g).join("\n");
+        assert!(!text.contains("S3 by class:"), "{text}");
+        assert!(
+            text.contains("1 object(s) assume Standard (pre-storage-class manifest)"),
+            "{text}"
+        );
     }
 
     #[test]

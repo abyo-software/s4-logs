@@ -455,9 +455,12 @@ anyone, not just us. S4 Logs handles this honestly:
   and a network boundary (security group / private subnet / mTLS mesh).
 - **Durability is opt-in via `--wal-dir`.** With it, events are fsynced
   before the ack and replayed on restart (at-least-once: duplicates are
-  possible after a crash, never silent loss). Without it, a crash loses up
-  to one flush window per (group, day) buffer. `both` routing keeps a CW
-  copy if you need belt and braces.
+  possible after a crash, never silent loss). The segment file *and* its
+  parent directory are fsynced on create and delete, so the lifecycle is
+  power-loss-safe on ext4/xfs (FUSE/NFS mounts that reject directory fsync
+  degrade to best-effort, counted in `s4logs_wal_dir_fsync_errors_total`).
+  Without a WAL, a crash loses up to one flush window per (group, day)
+  buffer. `both` routing keeps a CW copy if you need belt and braces.
 - **Late-arriving events can be missed by a too-eager drain.** CloudWatch
   indexes backdated events with a lag we measured at **3–5.5 minutes** (and
   agents may deliver much later). A window drained before its stragglers
@@ -480,14 +483,26 @@ anyone, not just us. S4 Logs handles this honestly:
   33,163,647 seeder-counted events (1×10⁻⁶) were never observed in
   CloudWatch reads. We could not attribute them (seeder accounting vs CW
   ingestion); recorded here rather than rounded away.
-- **Storage class is a per-deployment write-time choice; `report` prices
-  it flat.** `--storage-class` only affects new data objects; archives
-  with mixed classes read fine (grep/restore/Athena are class-agnostic
-  for the instant-access tiers), but `s4logs report` currently prices
-  every archived byte at S3 Standard ($0.023/GB·mo) — it neither prices
-  per-class nor estimates retrieval charges. Per-class pricing in the
-  report is on the roadmap (the storage class is already recorded on
-  each put receipt).
+- **Storage class is a per-deployment write-time choice; `report` now
+  prices per class.** `--storage-class` only affects new data objects;
+  archives with mixed classes read fine (grep/restore/Athena are
+  class-agnostic for the instant-access tiers). `s4logs report` prices
+  each object by its recorded class — STANDARD $0.023, STANDARD_IA
+  $0.0125, GLACIER_IR $0.004 per GiB·mo (us-east-1 list, storage only) —
+  and shows a per-class breakdown when a group mixes classes. Objects from
+  pre-5L manifests (and any drained without `--storage-class`) have no
+  recorded class and are billed at Standard, with the count noted as
+  "*N* object(s) assume Standard (pre-storage-class manifest)". Retrieval
+  / request / per-object-minimum charges are still out of scope.
+- **grep / restore accept a glob or `--all`, like drain/report.**
+  `--log-group` takes an exact name or a globset glob, and `--all` sweeps
+  the whole account; results stay globally timestamp-ordered across groups
+  (one shared k-way merge). An **exact** name reads S3 only — no CloudWatch
+  call — so the common single-group case keeps the read-only-S3 property; a
+  glob or `--all` first enumerates groups via `DescribeLogGroups`. With
+  multiple source groups, `restore --to-log-group` funnels every event into
+  the single target and records `original_log_group` in the wrap JSON
+  (single-group restores wrap byte-identically to before).
 - **Single account per deployment (P1).** AWS Organizations multi-account
   drain is part of the planned commercial tier, not the OSS core.
 - **Compression numbers above are synthetic** except where explicitly
@@ -525,8 +540,10 @@ flush did) and Prometheus `/metrics`: `s4logs_events_total{action=}`,
 `s4logs_flush_total`, `s4logs_flush_bytes_total{kind=raw|compressed}`,
 `s4logs_cw_passthrough_errors_total`, `s4logs_backpressure_total`, and the
 WAL family (`s4logs_wal_appends_total`, `s4logs_wal_replayed_events_total`,
-`s4logs_wal_torn_lines_total`, `s4logs_wal_fsync_errors_total`). Logs via
-`tracing` (`--log-format json|pretty`).
+`s4logs_wal_torn_lines_total`, `s4logs_wal_fsync_errors_total`,
+`s4logs_wal_dir_fsync_errors_total`). Logs via `tracing`
+(`--log-format json|pretty`). A ready-to-import Grafana dashboard ships in
+[`contrib/grafana/`](contrib/grafana/).
 
 ## Development
 

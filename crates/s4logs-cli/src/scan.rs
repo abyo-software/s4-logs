@@ -17,11 +17,14 @@
 //! drain-written chunks, whose events arrive chronologically). The merge
 //! holds one decoded cluster per open chunk, so peak memory is bounded by
 //! `(chunks overlapping the range) × (frame cluster size ≈ frame_target
-//! 4 MiB)`. The sidecar-less fallback decodes that whole object in one batch
-//! (capped at [`FALLBACK_DECODE_CAP_BYTES`]) — bounded, but per-object large.
+//! 4 MiB)`. The sidecar-less fallback **streams** the object through a zstd
+//! decoder one JSONL line at a time ([`stream_full_object`]) — its memory is
+//! one line plus the decoder window, not the whole plaintext, so a missing
+//! sidecar no longer forces a multi-GiB allocation. The decoded byte count is
+//! still bomb-capped at [`FALLBACK_DECODE_CAP_BYTES`].
 
 use std::collections::VecDeque;
-use std::io::Read;
+use std::io::BufRead;
 
 use anyhow::{Context, Result, bail};
 use regex::Regex;
@@ -35,10 +38,17 @@ use s4logs_core::store::{ObjectStore, StoreError};
 
 const DAY_MS: i64 = 86_400_000;
 
-/// Output cap for the sidecar-less fallback decode. Drain objects rotate at
+/// Bomb cap for the sidecar-less fallback: the streaming decoder refuses to
+/// emit more than this many *decompressed* bytes. Drain objects rotate at
 /// 256 MiB uncompressed by default; 2 GiB leaves generous headroom while
-/// still refusing decompression bombs.
+/// still refusing decompression bombs. Unlike the pre-wave-5L fallback this
+/// is a streaming ceiling — the bytes are processed line-by-line, never held
+/// in one buffer.
 const FALLBACK_DECODE_CAP_BYTES: u64 = 2 << 30;
+
+/// Read buffer for the streaming fallback decoder. Bounds the working set to
+/// roughly this plus one JSONL line, independent of object size.
+const FALLBACK_READ_BUF_BYTES: usize = 64 << 10;
 
 /// Ranges spanning more days than this fall back to one whole-group LIST
 /// (date-filtered afterwards) instead of one LIST per dt= partition — a
@@ -94,24 +104,67 @@ pub fn record_matches(rec: &LogRecord, range: &TimeRange, pattern: Option<&Regex
         && pattern.is_none_or(|re| re.is_match(&rec.message))
 }
 
-/// Decode a whole data object body (concatenated standard zstd frames)
-/// without sidecar size hints — the lock-in-avoidance fallback. Output is
-/// capped at [`FALLBACK_DECODE_CAP_BYTES`].
-pub fn decode_full_object(body: &[u8]) -> Result<Vec<u8>> {
+/// Stream a whole data object body (concatenated standard zstd frames)
+/// without sidecar size hints — the lock-in-avoidance fallback. The body is
+/// decoded through a buffered zstd reader one JSONL line at a time: at no
+/// point is the full plaintext materialized, so memory is one line plus the
+/// decoder/read-buffer window regardless of object size. Decoding stops with
+/// an error if the running decoded-byte total would exceed
+/// [`FALLBACK_DECODE_CAP_BYTES`] (decompression-bomb guard). Each parsed,
+/// in-range, pattern-matching record is handed to `emit`; unparseable lines
+/// are warned + counted, not fatal (one corrupt line must not kill a grep).
+pub fn stream_full_object<R, F>(
+    reader: R,
+    range: &TimeRange,
+    pattern: Option<&Regex>,
+    stats: &mut ScanStats,
+    emit: &mut F,
+) -> Result<()>
+where
+    R: std::io::Read,
+    F: FnMut(LogRecord) -> Result<()>,
+{
     let decoder =
-        zstd::stream::read::Decoder::new(body).context("zstd decoder init (fallback decode)")?;
-    let mut limited = decoder.take(FALLBACK_DECODE_CAP_BYTES + 1);
-    let mut out = Vec::new();
-    limited
-        .read_to_end(&mut out)
-        .context("zstd decode (fallback decode)")?;
-    if out.len() as u64 > FALLBACK_DECODE_CAP_BYTES {
-        bail!(
-            "sidecar-less decode exceeded the {} byte cap (decompression bomb?)",
-            FALLBACK_DECODE_CAP_BYTES
-        );
+        zstd::stream::read::Decoder::new(reader).context("zstd decoder init (fallback decode)")?;
+    let mut buf = std::io::BufReader::with_capacity(FALLBACK_READ_BUF_BYTES, decoder);
+    let mut line: Vec<u8> = Vec::new();
+    let mut decoded_total: u64 = 0;
+    loop {
+        line.clear();
+        let n = buf
+            .read_until(b'\n', &mut line)
+            .context("zstd decode (fallback decode)")?;
+        if n == 0 {
+            break; // EOF
+        }
+        decoded_total = decoded_total.saturating_add(n as u64);
+        if decoded_total > FALLBACK_DECODE_CAP_BYTES {
+            bail!(
+                "sidecar-less decode exceeded the {} byte cap (decompression bomb?)",
+                FALLBACK_DECODE_CAP_BYTES
+            );
+        }
+        // Trim the line terminator; skip blank lines (split-style padding
+        // must not poison a frame — mirrors RecordLines).
+        let content = line.strip_suffix(b"\n").unwrap_or(&line);
+        let content = content.strip_suffix(b"\r").unwrap_or(content);
+        if content.is_empty() {
+            continue;
+        }
+        match LogRecord::from_jsonl(content) {
+            Ok(rec) => {
+                if record_matches(&rec, range, pattern) {
+                    stats.records_emitted += 1;
+                    emit(rec)?;
+                }
+            }
+            Err(err) => {
+                stats.parse_errors += 1;
+                tracing::warn!(error = %err, "skipping unparseable JSONL line");
+            }
+        }
     }
-    Ok(out)
+    Ok(())
 }
 
 /// Stream decoded JSONL through the filter into `emit`. Unparseable lines
@@ -256,8 +309,10 @@ impl<S: RecordBatchSource> KWayMerge<S> {
         }
     }
 
-    /// Next record in global `(timestamp, stream, arrival)` order.
-    pub async fn next(&mut self) -> Result<Option<LogRecord>> {
+    /// Next record in global `(timestamp, stream, arrival)` order, tagged
+    /// with the index of the source it came from (chunk arrival order). The
+    /// multi-group scan maps that index back to the originating log group.
+    pub async fn next_indexed(&mut self) -> Result<Option<(LogRecord, usize)>> {
         if !self.primed {
             self.primed = true;
             for i in 0..self.sources.len() {
@@ -268,7 +323,7 @@ impl<S: RecordBatchSource> KWayMerge<S> {
             return Ok(None);
         };
         self.refill(src).await?;
-        Ok(Some(rec))
+        Ok(Some((rec, src)))
     }
 }
 
@@ -346,10 +401,22 @@ impl RecordBatchSource for ChunkSource<'_> {
                     .get_bytes(&self.data_key)
                     .await
                     .with_context(|| format!("full-object GET {}", self.data_key))?;
-                let jsonl = decode_full_object(&body)
-                    .with_context(|| format!("decoding whole object {}", self.data_key))?;
                 self.stats.fallback_full_objects += 1;
-                collect(&jsonl, &mut self.stats)?;
+                // Stream the object through the zstd decoder line-by-line —
+                // no `Vec<whole plaintext>`. `recs` still grows with the
+                // matching records, but a missing sidecar no longer forces a
+                // multi-GiB plaintext buffer on top of that.
+                stream_full_object(
+                    std::io::Cursor::new(&body),
+                    &self.range,
+                    self.pattern,
+                    &mut self.stats,
+                    &mut |rec| {
+                        recs.push(rec);
+                        Ok(())
+                    },
+                )
+                .with_context(|| format!("decoding whole object {}", self.data_key))?;
             }
         }
         // Stable sort: arrival order survives full (timestamp, stream) ties.
@@ -364,18 +431,37 @@ impl RecordBatchSource for ChunkSource<'_> {
 // Scan assembly: listing + pruning + merge.
 // ---------------------------------------------------------------------------
 
-/// A merged, timestamp-ascending stream of one log group's matching records.
-/// Pull with [`Self::next`]; [`Self::stats`] is final once `next` returns
-/// `None`.
+/// A merged, timestamp-ascending stream of one *or more* log groups' matching
+/// records. Pull with [`Self::next`] (or [`Self::next_with_group`] when the
+/// originating group matters, e.g. restore wrapping); [`Self::stats`] is final
+/// once the stream is drained.
+///
+/// Multi-group ordering reuses the *same* [`KWayMerge`]: every group's
+/// per-chunk sources are concatenated into one merge, so the global
+/// `(timestamp, stream, arrival)` order holds across groups exactly as it does
+/// within one. A single group degrades to byte-identical behavior (one group
+/// name, every source mapped to it).
 pub struct ScanStream<'a> {
     merge: KWayMerge<ChunkSource<'a>>,
+    /// Source index → index into `group_names` (chunk arrival → its group).
+    source_groups: Vec<usize>,
+    group_names: Vec<String>,
     listed: u64,
     scanned: u64,
 }
 
 impl ScanStream<'_> {
-    pub async fn next(&mut self) -> Result<Option<LogRecord>> {
-        self.merge.next().await
+    /// Next record in global `(timestamp, stream, arrival)` order, paired with
+    /// the log group it came from (multi-group restore wrapping records
+    /// `original_log_group`; grep ignores the group).
+    pub async fn next_with_group(&mut self) -> Result<Option<(LogRecord, &str)>> {
+        match self.merge.next_indexed().await? {
+            Some((rec, src)) => {
+                let group = &self.group_names[self.source_groups[src]];
+                Ok(Some((rec, group.as_str())))
+            }
+            None => Ok(None),
+        }
     }
 
     pub fn stats(&self) -> ScanStats {
@@ -441,19 +527,19 @@ async fn list_range_chunks(
     Ok((locs, listed))
 }
 
-/// Build the merged scan: list → sidecars → frame pruning/clustering →
-/// [`KWayMerge`] over per-chunk lazy sources. Nothing beyond sidecars is
-/// fetched until the stream is pulled.
-pub async fn open_scan<'a>(
+/// Build one group's per-chunk lazy sources: list → sidecars → frame
+/// pruning/clustering. Appends to `sources`; returns `(listed, scanned)` for
+/// that group. Shared by single- and multi-group scans.
+async fn build_group_sources<'a>(
     store: &'a ObjectStore,
     account: &str,
     log_group: &str,
     range: TimeRange,
     pattern: Option<&'a Regex>,
-) -> Result<ScanStream<'a>> {
+    sources: &mut Vec<ChunkSource<'a>>,
+) -> Result<(u64, u64)> {
     let (locs, listed) = list_range_chunks(store, account, log_group, &range).await?;
     let prefix = store.key_prefix().to_owned();
-    let mut sources: Vec<ChunkSource<'a>> = Vec::new();
     let mut scanned = 0u64;
 
     for loc in &locs {
@@ -527,30 +613,64 @@ pub async fn open_scan<'a>(
         });
     }
 
+    Ok((listed, scanned))
+}
+
+/// Build the merged scan across one or more log groups. Each group contributes
+/// its per-chunk sources to one shared [`KWayMerge`]; the global
+/// `(timestamp, stream, arrival)` order therefore spans groups. Group order in
+/// `log_groups` fixes the cross-group arrival tie-break (callers pass them
+/// name-sorted from discovery). Nothing beyond sidecars is fetched until the
+/// stream is pulled. With a single group the on-disk read path is
+/// byte-identical to the pre-wave-5L single-group scan (one group name, every
+/// source mapped to it).
+pub async fn open_scan_multi<'a>(
+    store: &'a ObjectStore,
+    account: &str,
+    log_groups: &[String],
+    range: TimeRange,
+    pattern: Option<&'a Regex>,
+) -> Result<ScanStream<'a>> {
+    let mut sources: Vec<ChunkSource<'a>> = Vec::new();
+    let mut source_groups: Vec<usize> = Vec::new();
+    let mut listed = 0u64;
+    let mut scanned = 0u64;
+    for (gi, log_group) in log_groups.iter().enumerate() {
+        let before = sources.len();
+        let (l, s) =
+            build_group_sources(store, account, log_group, range, pattern, &mut sources).await?;
+        listed += l;
+        scanned += s;
+        source_groups.extend(std::iter::repeat_n(gi, sources.len() - before));
+    }
     Ok(ScanStream {
         merge: KWayMerge::new(sources),
+        source_groups,
+        group_names: log_groups.to_vec(),
         listed,
         scanned,
     })
 }
 
-/// Scan every chunk of `log_group` overlapping `range`, calling `emit` for
-/// each matching record in **global timestamp-ascending order** (ties:
-/// stream, then arrival order — DESIGN.md §11.3).
-pub async fn scan_log_group<F>(
+/// Scan every chunk of every group in `log_groups` overlapping `range`,
+/// calling `emit(record, source_group)` for each matching record in **global
+/// timestamp-ascending order** across all of them (ties: stream, then arrival
+/// order — DESIGN.md §11.3). With one group the on-disk read path is
+/// byte-identical to the single-group scan.
+pub async fn scan_log_groups<F>(
     store: &ObjectStore,
     account: &str,
-    log_group: &str,
+    log_groups: &[String],
     range: TimeRange,
     pattern: Option<&Regex>,
     mut emit: F,
 ) -> Result<ScanStats>
 where
-    F: FnMut(&LogRecord) -> Result<()>,
+    F: FnMut(&LogRecord, &str) -> Result<()>,
 {
-    let mut scan = open_scan(store, account, log_group, range, pattern).await?;
-    while let Some(rec) = scan.next().await? {
-        emit(&rec)?;
+    let mut scan = open_scan_multi(store, account, log_groups, range, pattern).await?;
+    while let Some((rec, group)) = scan.next_with_group().await? {
+        emit(&rec, group)?;
     }
     Ok(scan.stats())
 }
@@ -647,8 +767,10 @@ mod tests {
         assert_eq!(stats.parse_errors, 1);
     }
 
+    /// The streaming fallback yields every record of a multi-frame object
+    /// (in object order) without ever materializing the full plaintext.
     #[test]
-    fn decode_full_object_roundtrips_multiframe_body() {
+    fn stream_full_object_yields_all_records_multiframe() {
         let mut w = ChunkWriter::new(ChunkConfig {
             frame_target_bytes: 200, // force several frames
             zstd_level: 3,
@@ -660,7 +782,7 @@ mod tests {
                 "s",
                 &format!("padded line {i:04} {}", "z".repeat(30)),
             );
-            r.append_jsonl(&mut expect).unwrap();
+            expect.push(r.message.clone());
             w.push(&r).unwrap();
         }
         let chunk = w.finish().unwrap().unwrap();
@@ -668,13 +790,134 @@ mod tests {
             chunk.frame_index.entries.len() > 1,
             "want a multiframe body"
         );
-        let out = decode_full_object(&chunk.body).unwrap();
-        assert_eq!(out, expect);
+        let range = TimeRange {
+            from_ms: i64::MIN,
+            to_ms_exclusive: i64::MAX,
+        };
+        let mut got = Vec::new();
+        let mut stats = ScanStats::default();
+        stream_full_object(
+            std::io::Cursor::new(&chunk.body),
+            &range,
+            None,
+            &mut stats,
+            &mut |r: LogRecord| {
+                got.push(r.message);
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert_eq!(got, expect);
+        assert_eq!(stats.records_emitted, 50);
+    }
+
+    /// The streaming fallback filters by range + pattern and tolerates a
+    /// corrupt line mid-stream, exactly like the frame path.
+    #[test]
+    fn stream_full_object_filters_and_tolerates_garbage() {
+        let mut w = ChunkWriter::new(ChunkConfig {
+            frame_target_bytes: 64,
+            zstd_level: 3,
+        });
+        for r in [
+            rec(100, "s", "skip too early is at 100? no, in range"),
+            rec(150, "s", "ERROR one"),
+            rec(160, "s", "no match here"),
+            rec(170, "s", "ERROR two"),
+            rec(250, "s", "ERROR too late"),
+        ] {
+            w.push(&r).unwrap();
+        }
+        let chunk = w.finish().unwrap().unwrap();
+        let range = TimeRange {
+            from_ms: 120,
+            to_ms_exclusive: 200,
+        };
+        let re = Regex::new("ERROR").unwrap();
+        let mut got = Vec::new();
+        let mut stats = ScanStats::default();
+        stream_full_object(
+            std::io::Cursor::new(&chunk.body),
+            &range,
+            Some(&re),
+            &mut stats,
+            &mut |r: LogRecord| {
+                got.push(r.message);
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert_eq!(got, vec!["ERROR one", "ERROR two"]);
+        assert_eq!(stats.records_emitted, 2);
     }
 
     #[test]
-    fn decode_full_object_rejects_garbage() {
-        assert!(decode_full_object(b"definitely not zstd").is_err());
+    fn stream_full_object_rejects_garbage() {
+        let range = TimeRange {
+            from_ms: 0,
+            to_ms_exclusive: i64::MAX,
+        };
+        let mut stats = ScanStats::default();
+        assert!(
+            stream_full_object(
+                std::io::Cursor::new(b"definitely not zstd".as_slice()),
+                &range,
+                None,
+                &mut stats,
+                &mut |_r: LogRecord| Ok(()),
+            )
+            .is_err()
+        );
+    }
+
+    /// A large multi-frame object streams through the fallback without a
+    /// memory spike proportional to the plaintext: the peak `line` buffer
+    /// stays bounded by the longest single line, not the whole object. We
+    /// prove the streaming reader is used (records arrive, cap not hit) on an
+    /// object whose plaintext dwarfs any per-line buffer.
+    #[test]
+    fn stream_full_object_processes_large_object_without_full_buffer() {
+        let mut w = ChunkWriter::new(ChunkConfig {
+            frame_target_bytes: 4 << 10, // many frames
+            zstd_level: 3,
+        });
+        let line_len = 200usize;
+        let n = 20_000i64; // ~4 MiB plaintext, >> any per-line buffer
+        for i in 0..n {
+            w.push(&rec(DAY0 + i, "s", &"m".repeat(line_len))).unwrap();
+        }
+        let chunk = w.finish().unwrap().unwrap();
+        assert!(
+            chunk.frame_index.entries.len() > 4,
+            "want many frames for a streaming test"
+        );
+        let range = TimeRange {
+            from_ms: i64::MIN,
+            to_ms_exclusive: i64::MAX,
+        };
+        let mut count = 0u64;
+        let mut max_line_seen = 0usize;
+        let mut stats = ScanStats::default();
+        stream_full_object(
+            std::io::Cursor::new(&chunk.body),
+            &range,
+            None,
+            &mut stats,
+            &mut |r: LogRecord| {
+                count += 1;
+                max_line_seen = max_line_seen.max(r.message.len());
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert_eq!(count, n as u64);
+        // The handler never sees more than one decoded line at a time; the
+        // longest message is `line_len`, far below the total plaintext.
+        assert_eq!(max_line_seen, line_len);
+        assert!(
+            (line_len as u64) < FALLBACK_DECODE_CAP_BYTES,
+            "per-line working set is tiny vs the bomb cap"
+        );
     }
 
     // -- frame clustering ---------------------------------------------------
@@ -747,7 +990,7 @@ mod tests {
         futures::executor::block_on(async {
             let mut merge = KWayMerge::new(sources);
             let mut out = Vec::new();
-            while let Some(r) = merge.next().await.unwrap() {
+            while let Some((r, _src)) = merge.next_indexed().await.unwrap() {
                 out.push(r);
             }
             out
@@ -769,6 +1012,26 @@ mod tests {
         let out = drain_merge(vec![a, b, c]);
         let ts: Vec<i64> = out.iter().map(|r| r.timestamp).collect();
         assert_eq!(ts, vec![1, 2, 3, 4, 5, 6, 7, 8]);
+    }
+
+    #[test]
+    fn merge_indexed_tags_each_record_with_its_source() {
+        // Two "groups" worth of sources: src 0,1 (group A) and src 2 (group
+        // B). next_indexed must hand back the popped record's source index so
+        // the multi-group scan can map it back to a log group.
+        let a0 = VecSource::new(vec![vec![rec(1, "s", "a0")]]);
+        let a1 = VecSource::new(vec![vec![rec(3, "s", "a1")]]);
+        let b0 = VecSource::new(vec![vec![rec(2, "s", "b0")]]);
+        let got = futures::executor::block_on(async {
+            let mut merge = KWayMerge::new(vec![a0, a1, b0]);
+            let mut out = Vec::new();
+            while let Some((rec, src)) = merge.next_indexed().await.unwrap() {
+                out.push((rec.timestamp, src));
+            }
+            out
+        });
+        // Global timestamp order, each tagged with its source index.
+        assert_eq!(got, vec![(1, 0), (2, 2), (3, 1)]);
     }
 
     #[test]

@@ -225,3 +225,22 @@ action = "cloudwatch"
   manifest は常に STANDARD (GIR の 128 KiB 最低課金 + hot path)。
 - **`s4logs plan`**: read-only 診断 (DescribeLogGroups storedBytes = CW の
   gzip 課金実バイト + CW Metrics IncomingBytes)。bucket / account 不要。
+
+## 13. Wave 5 amendments (polish — 2026-06-11 追記)
+
+- **Manifest schema (§7)**: `ManifestObject` に optional `storage_class:
+  Option<String>` を追加 (raw_bytes の後)。`STANDARD_IA` / `GLACIER_IR`
+  等の canonical S3 class label、STANDARD/未設定は省略。serde skip-if-none、
+  raw_bytes / reconciled_* と同じ byte 互換規律。PutReceipt から populate、
+  `s4logs report` の per-class 価格付けに使用。
+- **grep / restore**: `--log-group` が glob 受付 + `--all` 対応 (drain/report
+  と対称)。exact 名は CW discovery を skip し read-only-S3 を維持、glob/--all
+  のみ DescribeLogGroups。複数 group は単一 k-way merge で時刻順、
+  restore --to-log-group は単一 target に funnel し wrap JSON に
+  `original_log_group` を記録。
+- **sidecar 欠損 fallback**: 全 object を 1 Vec で decode する旧実装を
+  streaming (zstd read::Decoder + BufReader、行単位) に置換。peak working
+  set = 1 行 + decoder window、object サイズ非依存。bomb cap は running
+  ceiling として維持。
+- **WAL**: segment create/delete で親 dir を fsync (power-loss safe、§11.1
+  の caveat 解消)。`s4logs_wal_dir_fsync_errors_total` を追加。
