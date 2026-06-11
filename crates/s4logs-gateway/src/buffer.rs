@@ -35,7 +35,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use metrics::counter;
-use s4logs_core::chunk::{ChunkConfig, ChunkError, ChunkWriter};
+use s4logs_core::chunk::{ChunkConfig, ChunkError, ChunkWriter, EncodedChunk};
 use s4logs_core::layout::{ChunkLocation, date_from_ts_ms};
 use s4logs_core::record::LogRecord;
 use s4logs_core::sink::SinkError;
@@ -192,7 +192,18 @@ impl BufferManager {
             }
             due
         };
-        self.flush_taken(due).await
+        // The events of this batch are already accepted: appended to their
+        // writers and, with WAL on, fsynced before this point. A flush
+        // failure here does NOT mean the batch was rejected — `flush_one`
+        // retains the data (reinsert when WAL is off; the on-disk segment
+        // when WAL is on). Returning an error would make the client retry an
+        // already-accepted batch and duplicate it, so record the failure in
+        // the ready bit + log and return Ok. (Pre-append rejections —
+        // OverCapacity, WAL append failure — already returned above via `?`.)
+        if let Err(err) = self.flush_taken(due).await {
+            tracing::error!(error = %err, "post-append flush failed; events retained for retry");
+        }
+        Ok(())
     }
 
     /// Memory-cap backpressure (module docs, trigger 4): make room for
@@ -211,7 +222,14 @@ impl BufferManager {
         };
         if let Some((key, buf)) = largest {
             tracing::info!(log_group = %key.0, dt = %key.1, "memory cap: flushing largest buffer");
-            self.flush_taken(vec![(key, buf)]).await?;
+            // A make-room flush failure must not surface as the raw sink
+            // error: `flush_one` retains the buffer (reinsert / WAL segment),
+            // so the right outcome is "still over cap → 503", which the
+            // `still_over` check below produces. The incoming batch was not
+            // appended, so a client retry of *it* is correct and not a dup.
+            if let Err(err) = self.flush_taken(vec![(key, buf)]).await {
+                tracing::error!(error = %err, "memory-cap flush failed; batch will be rejected");
+            }
         }
         let still_over = {
             let buffers = self.buffers.lock().unwrap_or_else(|e| e.into_inner());
@@ -382,12 +400,23 @@ impl BufferManager {
         // Encode WITHOUT consuming the writer (s4logs-core `encode`): if the
         // PUT fails we still hold every event and can put the buffer back,
         // rather than dropping acknowledged data.
-        let Some(chunk) = buf.writer.encode()? else {
-            // Empty writer — nothing to store; its WAL mirror is empty too.
-            if let Some(seg) = buf.wal {
-                seg.delete();
+        let chunk = match buf.writer.encode() {
+            Ok(Some(chunk)) => chunk,
+            Ok(None) => {
+                // Empty writer — nothing to store; its WAL mirror is empty too.
+                if let Some(seg) = buf.wal {
+                    seg.delete();
+                }
+                return Ok(());
             }
-            return Ok(());
+            Err(err) => {
+                // Encoding failed (≈never — zstd compress of in-memory bytes).
+                // The invariant callers rely on is "a flush error means the
+                // events were retained", so reinsert before returning even on
+                // this path (no chunk to merge with → `None`).
+                self.reinsert(log_group, date, buf, None);
+                return Err(BufferError::Chunk(err));
+            }
         };
         let loc = ChunkLocation {
             account: self.cfg.account.clone(),
@@ -416,40 +445,78 @@ impl BufferManager {
                 Ok(())
             }
             Err(err) => {
-                // The PUT failed. With WAL on, the segment on disk still holds
-                // every event, so dropping the in-memory buffer is safe
-                // (restart replays). With WAL OFF, the in-memory buffer is the
-                // only copy of already-acknowledged events — put it back so a
-                // later flush retries instead of silently losing them.
-                if buf.wal.is_some() {
-                    return Err(BufferError::Sink(err));
-                }
-                self.reinsert(log_group, date, buf);
+                // The PUT failed. Put the buffer back so a later flush retries
+                // instead of dropping acknowledged events. (`push_events`
+                // already returned 200 for these events, so re-flushing — not
+                // re-accepting from the client — is how they reach S3.) The
+                // already-encoded `chunk` is handed to `reinsert` so it never
+                // re-encodes.
+                self.reinsert(log_group, date, buf, Some(chunk));
                 Err(BufferError::Sink(err))
             }
         }
     }
 
-    /// Return a buffer to the pool after a failed WAL-less flush. If a
-    /// concurrent `push_events` already created a fresh buffer for the same
-    /// key, merge our events into it (by re-pushing the encoded records) so
-    /// neither set is lost; otherwise reinsert ours unchanged.
-    fn reinsert(&self, log_group: String, date: String, buf: Buf) {
+    /// Return a failed-flush buffer to the pool for a later retry.
+    ///
+    /// - **Vacant key** (the common case): reinsert `buf` unchanged. Its WAL
+    ///   segment, if any, comes back with it — a later flush retries and only
+    ///   then deletes the segment.
+    /// - **Occupied key** (a concurrent `push_events` recreated the key while
+    ///   this flush was in flight):
+    ///   - WAL **on**: leave `buf`'s on-disk segment in place (dropping `buf`
+    ///     does not delete it) so a restart replays those events. Merging into
+    ///     the live buffer would bypass its WAL segment and risk a duplicate,
+    ///     so we deliberately rely on replay here.
+    ///   - WAL **off**: memory is the only copy — merge `buf`'s events into the
+    ///     live buffer by decoding the already-encoded `chunk` and re-pushing.
+    ///     Pull the live buffer's age clock and object-name timestamp back to
+    ///     cover the older merged events (`opened_at`/`first_event_ts_ms`
+    ///     minimums) so they still age-flush and the object name reflects the
+    ///     true oldest event.
+    ///
+    /// `chunk` is the already-encoded body when the failure was a PUT error
+    /// (so the WAL-off merge never re-encodes); it is `None` when the failure
+    /// was the encode itself, in which case a merge into an occupied key is
+    /// impossible and the events are surfaced via
+    /// `s4logs_flush_dropped_events_total` rather than silently dropped.
+    fn reinsert(&self, log_group: String, date: String, buf: Buf, chunk: Option<EncodedChunk>) {
         let mut buffers = self.buffers.lock().unwrap_or_else(|e| e.into_inner());
         match buffers.entry((log_group, date)) {
             std::collections::hash_map::Entry::Vacant(e) => {
                 e.insert(buf);
             }
+            std::collections::hash_map::Entry::Occupied(_) if buf.wal.is_some() => {
+                // WAL on: the segment holds the events; rely on replay.
+            }
             std::collections::hash_map::Entry::Occupied(mut e) => {
-                // Decode our own freshly-encoded chunk (size is trusted — we
-                // just wrote it) and re-push into the live buffer.
-                if let Ok(Some(chunk)) = buf.writer.encode()
-                    && let Ok(plain) =
-                        s4logs_core::read::decompress_frames(&chunk.body, chunk.uncompressed_bytes)
-                {
-                    let dst = e.get_mut();
-                    for rec in s4logs_core::read::RecordLines::new(&plain).flatten() {
-                        let _ = dst.writer.push(&rec);
+                let dst = e.get_mut();
+                dst.opened_at = dst.opened_at.min(buf.opened_at);
+                dst.first_event_ts_ms = dst.first_event_ts_ms.min(buf.first_event_ts_ms);
+                let merged = chunk.as_ref().and_then(|c| {
+                    s4logs_core::read::decompress_frames(&c.body, c.uncompressed_bytes).ok()
+                });
+                match merged {
+                    Some(plain) => {
+                        for rec in s4logs_core::read::RecordLines::new(&plain).flatten() {
+                            let _ = dst.writer.push(&rec);
+                        }
+                    }
+                    None => {
+                        // No usable chunk to merge (encode failure, or decoding
+                        // our own just-written chunk failed — both ≈never).
+                        // Surface it instead of dropping silently. When the
+                        // chunk is absent (encode failure) the count comes from
+                        // the writer, not the missing chunk, so the counter
+                        // reflects the real loss rather than 0.
+                        let lost = chunk
+                            .as_ref()
+                            .map_or_else(|| buf.writer.record_count(), |c| c.record_count);
+                        counter!("s4logs_flush_dropped_events_total").increment(lost);
+                        tracing::error!(
+                            records = lost,
+                            "reinsert into a concurrently-recreated buffer could not merge; events dropped"
+                        );
                     }
                 }
             }
@@ -534,6 +601,48 @@ mod tests {
         }
     }
     impl GatewaySink for FlakySink {}
+
+    #[tokio::test]
+    async fn inline_flush_failure_returns_ok_so_client_does_not_duplicate() {
+        // An inline (size-triggered) flush failure must NOT fail push_events:
+        // the events are already accepted and retained, so returning an error
+        // would make the client retry and duplicate the batch.
+        let sink = Arc::new(FlakySink {
+            fail_remaining: std::sync::atomic::AtomicUsize::new(1),
+            inner: MemorySink::new(""),
+        });
+        let m = BufferManager::new(
+            BufferConfig {
+                flush_bytes: 1, // every push triggers an inline flush
+                ..BufferConfig::default()
+            },
+            sink.clone(),
+        );
+        // The inline flush fails (injected) but the request must succeed.
+        m.push_events("/g", "s", &[ev(1781049600000, "acked")])
+            .await
+            .expect("accepted batch must return Ok despite flush failure");
+        assert!(!m.ready().await, "ready bit reflects the failed flush");
+        // Events were retained; a later flush persists them exactly once.
+        m.flush_all().await.unwrap();
+        let data: Vec<_> = sink
+            .inner
+            .keys()
+            .into_iter()
+            .filter(|k| k.ends_with(".jsonl.zst"))
+            .collect();
+        assert_eq!(data.len(), 1, "retained events persist once, no duplicate");
+        assert_eq!(decode_records(&sink.inner, &data[0]).len(), 1);
+    }
+
+    fn decode_records(sink: &MemorySink, key: &str) -> Vec<s4logs_core::record::LogRecord> {
+        let body = sink.get(key).unwrap();
+        let raw = zstd::stream::decode_all(&body[..]).unwrap();
+        raw.split(|&b| b == b'\n')
+            .filter(|l| !l.is_empty())
+            .map(|l| s4logs_core::record::LogRecord::from_jsonl(l).unwrap())
+            .collect()
+    }
 
     #[tokio::test]
     async fn flush_failure_without_wal_reinserts_events_for_retry() {
