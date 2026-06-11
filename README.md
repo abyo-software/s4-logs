@@ -23,6 +23,43 @@ S4 Logs is the second product in the [S4 family](https://github.com/abyo-softwar
 (S4 does the same thing to your **S3** bill; S4 Logs does it to your
 **CloudWatch Logs** bill) and reuses s4-codec's S4IX range-read index format.
 
+## Install
+
+**Linux (x86_64 / aarch64)** — one-line installer (downloads the latest
+release tarball, verifies its sha256, drops the static binary in
+`~/.local/bin`):
+
+```console
+curl -fsSL https://raw.githubusercontent.com/abyo-software/s4-logs/main/scripts/install.sh | sh
+```
+
+Knobs (all optional):
+
+- `S4LOGS_VERSION=v0.3.0` — pin a release tag instead of latest.
+- `S4LOGS_INSTALL_DIR=/usr/local/bin` — install elsewhere (default
+  `~/.local/bin`). The script `mkdir -p`s it and is safe to re-run.
+
+The installer is POSIX `sh`, `set -eu`, checks for `curl`/`tar`/`sha256sum`
+(or `shasum`), verifies the checksum before extracting, and prints a PATH
+hint if the install dir isn't on `PATH`. Read it first if you'd rather not
+pipe to a shell: [`scripts/install.sh`](scripts/install.sh).
+
+Releases ship **static musl** binaries for `x86_64-unknown-linux-musl` and
+`aarch64-unknown-linux-musl` (no glibc dependency). Prefer to do it by hand?
+Grab the matching `s4logs-<version>-<target>.tar.gz` from the
+[Releases page](https://github.com/abyo-software/s4-logs/releases), verify
+its `.sha256`, and extract `s4logs`.
+
+**macOS / other** — no prebuilt binary yet; build from source (the installer
+will tell you this and stop):
+
+```console
+cargo install --git https://github.com/abyo-software/s4-logs s4logs-cli
+```
+
+**Docker** — `docker build -t s4logs .` (see [`Dockerfile`](Dockerfile);
+the runtime image is ~176 MB and defaults to the Mode B gateway).
+
 ## How it works
 
 Two independent modes; run either or both.
@@ -335,7 +372,12 @@ proper, whose S4F2 container needs the ~1k-LOC Apache-2.0 `s4-codec`
 decoder; S4 Logs objects need nothing at all.
 
 Query the archive in place with Athena (Hive-style partitions, zstd
-detected by the `.zst` extension):
+detected by the `.zst` extension). The catch: log group names are
+**percent-encoded** in the `loggroup=` partition values
+(`/aws/lambda/foo` → `%2Faws%2Flambda%2Ffoo`), which trips `MSCK REPAIR
+TABLE` on some Athena versions. The clean fix is **partition projection** —
+Athena computes partitions from `TBLPROPERTIES`, so there is no crawler, no
+`MSCK`, and no encoding ambiguity:
 
 ```sql
 CREATE EXTERNAL TABLE s4logs_archive (
@@ -347,24 +389,46 @@ CREATE EXTERNAL TABLE s4logs_archive (
 )
 PARTITIONED BY (account string, loggroup string, dt string)
 ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
-LOCATION 's3://YOUR_BUCKET/s4logs/data/';
-
-MSCK REPAIR TABLE s4logs_archive;
+LOCATION 's3://YOUR_BUCKET/s4logs/data/'
+TBLPROPERTIES (
+  'projection.enabled' = 'true',
+  'projection.account.type' = 'injected',   -- query by exact 12-digit id
+  'projection.loggroup.type' = 'injected',  -- query by the %-encoded value
+  'projection.dt.type' = 'date',
+  'projection.dt.format' = 'yyyy-MM-dd',
+  'projection.dt.range' = '2024-01-01,NOW',
+  'projection.dt.interval' = '1',
+  'projection.dt.interval.unit' = 'DAYS',
+  'storage.location.template' =
+    's3://YOUR_BUCKET/s4logs/data/account=${account}/loggroup=${loggroup}/dt=${dt}/'
+);
 
 SELECT from_unixtime(`timestamp` / 1000) AS t, stream, message
 FROM s4logs_archive
-WHERE dt = '2026-06-09' AND message LIKE '%ERROR%'
+WHERE account = '123456789012'
+  AND loggroup = '%2Faws%2Flambda%2Fpayments'   -- percent-encoded
+  AND dt BETWEEN '2026-06-01' AND '2026-06-09'
+  AND message LIKE '%ERROR%'
 LIMIT 100;
 ```
 
-**Verified on real Athena** (2026-06-10): a per-log-group variant of this
-DDL (table `LOCATION` at the `loggroup=` level, `ADD PARTITION` for the
-`dt=` directory) ran against a real 41-object / 1.6 GiB archive —
-`count(*)` returned exactly the drained record count, and a `LIKE` query
-with partition pruning scanned only 78.6 MB. Note for the `MSCK REPAIR`
-form above: log group names are percent-encoded in the `loggroup=`
-partition values (`%2Faws%2Flambda%2Ffoo`), so prefer explicit
-`ADD PARTITION` or partition projection if your tooling mangles `%`.
+`account` and `loggroup` use the **`injected`** projection type: their value
+sets are sparse and user-specific (and `loggroup` is percent-encoded), so
+rather than enumerate them in DDL you pass the exact literal in `WHERE` —
+which also means a query must filter on both (you query one log group at a
+time anyway). `dt` is a real **`date`** range so `BETWEEN`/`>=` prune to just
+the days touched. Full DDL, the readable-loggroup view trick, and the
+explicit-`ADD PARTITION` alternative are in [`docs/athena.md`](docs/athena.md).
+
+**What's verified, honestly:** the **explicit-`ADD PARTITION`** form (table
+`LOCATION` at the `loggroup=` level, one `ADD PARTITION` per `dt=` directory
+— see `docs/athena.md` §2) is what we ran **end-to-end on real Athena**
+(2026-06-10): against a real 41-object / 1.6 GiB archive, `count(*)` returned
+exactly the drained record count and a `LIKE` query with partition pruning
+scanned 78.6 MB. The **partition-projection** config above is standard Athena
+syntax that we validated **only for parse-correctness** — it has **not** been
+run against a live Athena endpoint, so sanity-check a `count(*)` against a
+known window before relying on it.
 
 ## Restore and the 14-day PutLogEvents constraint
 

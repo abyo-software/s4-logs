@@ -4,13 +4,14 @@ name: Release
 # GitHub release with the artifacts.
 #
 # Targets:
-# - x86_64-unknown-linux-musl: static-pie, verified to build (musl-tools +
-#   CC=musl-gcc handles zstd-sys / aws-lc-sys C code).
-# - aarch64: TODO (honest gap) — aws-lc-sys + zstd-sys cross-compilation
-#   needs an aarch64 C toolchain (or `cross` containers) that we have not
-#   verified; shipping an untested binary would be worse than not shipping
-#   one. Add `aarch64-unknown-linux-musl` to the matrix once a verified
-#   toolchain recipe exists.
+# - x86_64-unknown-linux-musl: static, native build (musl-tools + CC=musl-gcc
+#   handles the zstd-sys C code; the AWS SDK uses rustls, so there is no
+#   aws-lc-sys C to cross-compile here).
+# - aarch64-unknown-linux-musl: built with `cross` (cross-rs) so the
+#   aarch64 musl C toolchain lives in the cross container — verified to
+#   compile (zstd-sys included) and qemu-smoke-tested (`s4logs --version`
+#   → 0.3.0) on 2026-06-11. The historical blocker (aarch64 C cross-compile)
+#   is resolved by delegating it to the cross image.
 
 on:
   push:
@@ -32,6 +33,9 @@ jobs:
       matrix:
         include:
           - target: x86_64-unknown-linux-musl
+            use_cross: false
+          - target: aarch64-unknown-linux-musl
+            use_cross: true
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
@@ -40,18 +44,37 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.target }}
-      - name: Install musl toolchain
+      # x86_64: native musl build. aarch64: `cross` carries its own aarch64
+      # musl C toolchain in a container, so no host toolchain is installed.
+      - name: Install musl toolchain (native x86_64 only)
+        if: ${{ !matrix.use_cross }}
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends musl-tools
-      - name: Build
+      - name: Install cross (aarch64 only)
+        if: ${{ matrix.use_cross }}
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+      - name: Build (native)
+        if: ${{ !matrix.use_cross }}
         env:
           CC_x86_64_unknown_linux_musl: musl-gcc
         run: cargo build --release -p s4logs-cli --bin s4logs --target ${{ matrix.target }}
+      - name: Build (cross)
+        if: ${{ matrix.use_cross }}
+        run: cross build --release -p s4logs-cli --bin s4logs --target ${{ matrix.target }}
       - name: Package (strip + tar.gz + sha256)
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME}"
           BIN="target/${{ matrix.target }}/release/s4logs"
-          strip "$BIN"
+          # llvm-strip is architecture-agnostic (host strip cannot strip the
+          # cross-built aarch64 ELF). It ships on ubuntu-latest; fall back to
+          # GNU strip for the native x86_64 build if it is ever missing.
+          if command -v llvm-strip >/dev/null 2>&1; then
+            llvm-strip "$BIN"
+          else
+            strip "$BIN"
+          fi
           STAGE="s4logs-${VERSION}-${{ matrix.target }}"
           mkdir -p "$STAGE"
           cp "$BIN" LICENSE NOTICE README.md "$STAGE/"
