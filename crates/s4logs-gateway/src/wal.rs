@@ -24,14 +24,24 @@
 //! - **Torn tails**: a torn/corrupt line (typically the last line of a
 //!   segment after a crash mid-write) is skipped with a warning and counted
 //!   in `s4logs_wal_torn_lines_total`; preceding intact lines still replay.
-//! - **The directory itself is not fsynced** after create/delete: on some
-//!   filesystems a freshly created segment may be lost on power failure even
-//!   though its data blocks were synced. Acceptable for the product's
-//!   "survive process crash / OOM kill" goal; full power-loss hardening
-//!   would need `fsync(dir)` per rotation.
+//! - **Directory entries are fsynced on create and delete**: a file's data
+//!   blocks reaching disk is not enough — the *directory entry* (dirent)
+//!   naming the file must also be durable, or a power loss can lose a
+//!   just-created segment (its data is on disk but unreachable) or resurrect
+//!   a just-deleted one (the unlink never hit disk → duplicate replay). So
+//!   [`WalSegment::create`] fsyncs the parent directory after creating the
+//!   file (before the first append's ack) and [`WalSegment::delete`] fsyncs
+//!   it after the unlink. A full power-loss-proof guarantee now holds for the
+//!   segment lifecycle (modulo the filesystem honoring fsync). The dir-fsync
+//!   is best-effort with logging — some FUSE/NFS mounts reject `fsync` on a
+//!   directory handle; such failures are counted in
+//!   `s4logs_wal_dir_fsync_errors_total` and do not fail the request (on a
+//!   normal local filesystem, e.g. ext4/xfs, the fsync succeeds and the
+//!   guarantee is real).
 //!
 //! Metrics: `s4logs_wal_appends_total`, `s4logs_wal_replayed_events_total`,
-//! `s4logs_wal_torn_lines_total`, `s4logs_wal_fsync_errors_total`.
+//! `s4logs_wal_torn_lines_total`, `s4logs_wal_fsync_errors_total`,
+//! `s4logs_wal_dir_fsync_errors_total`.
 
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
@@ -43,6 +53,39 @@ use serde::{Deserialize, Serialize};
 
 /// Segment file extension.
 pub const WAL_SUFFIX: &str = ".wal";
+
+/// Open `dir` and fsync it so that directory-entry changes (a new file's
+/// dirent, or an unlink) are durable on disk — `fsync` on the file alone
+/// only persists the file's data/metadata, not the parent's name→inode
+/// mapping (POSIX: the dirent reaching disk requires `fsync(parent_dir)`).
+///
+/// Returns the underlying `io::Error` on failure so callers can decide; the
+/// WAL lifecycle treats a failure as best-effort (logged + counted in
+/// `s4logs_wal_dir_fsync_errors_total`) because some FUSE/NFS filesystems
+/// reject fsync on a directory handle. On a normal local filesystem this
+/// succeeds and the segment lifecycle is power-loss-proof.
+pub fn fsync_dir(dir: &Path) -> std::io::Result<()> {
+    // Read-only open of the directory is the portable way to get a handle to
+    // fsync (you cannot open a directory for write on Linux).
+    File::open(dir)?.sync_all()
+}
+
+/// Fsync the parent directory of `path`, swallowing-but-counting errors.
+/// `op` labels the lifecycle event for the log line ("create" / "delete").
+fn sync_parent_dir(path: &Path, op: &str) {
+    let Some(parent) = path.parent() else {
+        return;
+    };
+    if let Err(err) = fsync_dir(parent) {
+        counter!("s4logs_wal_dir_fsync_errors_total").increment(1);
+        tracing::warn!(
+            dir = %parent.display(),
+            op,
+            error = %err,
+            "wal directory fsync failed (segment dirent may not be power-loss durable on this filesystem)"
+        );
+    }
+}
 
 /// One WAL line — the event plus the buffer-key context needed for replay
 /// (DESIGN.md §11.1 line shape).
@@ -87,6 +130,10 @@ impl WalSegment {
             .create_new(true)
             .append(true)
             .open(&path)?;
+        // Make the new dirent durable before the first append can be acked —
+        // otherwise a power loss could lose the file (its data hits disk but
+        // the directory entry naming it does not).
+        sync_parent_dir(&path, "create");
         Ok(Self {
             path,
             file,
@@ -130,7 +177,12 @@ impl WalSegment {
     pub fn delete(self) {
         if let Err(err) = fs::remove_file(&self.path) {
             tracing::warn!(path = %self.path.display(), error = %err, "wal segment delete failed; will replay as duplicates");
+            return;
         }
+        // Make the unlink durable: otherwise a power loss after the chunk was
+        // stored could resurrect the deleted segment → duplicate replay
+        // (at-least-once-safe but wasteful).
+        sync_parent_dir(&self.path, "delete");
     }
 }
 
@@ -251,6 +303,38 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let missing = dir.path().join("nope");
         assert!(scan_dir(&missing).unwrap().is_empty());
+    }
+
+    #[test]
+    fn fsync_dir_succeeds_on_tmpdir() {
+        // Proves the dir-fsync seam works on a normal local filesystem (the
+        // platform CI runs on): create/delete rely on this succeeding for the
+        // power-loss guarantee to be real.
+        let dir = tempfile::tempdir().unwrap();
+        fsync_dir(dir.path()).unwrap();
+    }
+
+    #[test]
+    fn fsync_dir_errors_on_missing_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let missing = dir.path().join("does-not-exist");
+        assert!(fsync_dir(&missing).is_err());
+    }
+
+    #[test]
+    fn create_and_delete_fsync_parent_dir() {
+        // create() and delete() both fsync the parent dir; on a tmpdir that
+        // fsync succeeds, so the whole lifecycle completes without error and
+        // the segment is gone afterwards. (The fsync itself is exercised via
+        // sync_parent_dir → fsync_dir, unit-tested directly above.)
+        let dir = tempfile::tempdir().unwrap();
+        // Sanity: the parent fsync the calls perform works on this fs.
+        fsync_dir(dir.path()).unwrap();
+        let seg = WalSegment::create(dir.path(), "/g", "2026-06-10").unwrap();
+        let path = seg.path().to_owned();
+        assert!(path.exists());
+        seg.delete();
+        assert!(!path.exists());
     }
 
     #[test]
