@@ -429,9 +429,15 @@ anyone, not just us. S4 Logs handles this honestly:
 - **Compression numbers above are synthetic** except where explicitly
   labeled (s4's real nginx corpus; the real-AWS experiment used synthetic
   data too and is labeled as such).
-- **Cost Explorer confirmation pending.** The experiment's usage-side
-  numbers are in; the matching AWS bill line items materialize with ~24 h
-  lag and will be attached when available.
+- **Bill-line confirmation, partial.** Cost Explorer (captured 2026-06-11)
+  confirmed the experiment's Athena line exactly ($0.008 for the 1.68 GB
+  scan at $5/TB) and the S3 request pennies; the CloudWatch ingest line
+  (list-price math: $2.50) had not yet posted when we tore the experiment
+  down — CW billing lines can lag 24–48 h and we deleted the resources
+  rather than keep them alive for a screenshot. `storedBytes` (the gzip
+  billing basis) never materialized before the 1-day retention expired the
+  test data, so the gzip-billed-storage statement in the cost model rests
+  on the AWS pricing page footnote, not on our own measurement.
 - **Restore to CloudWatch cannot reproduce original timestamps** older than
   14 days (AWS API constraint — see previous section).
 
