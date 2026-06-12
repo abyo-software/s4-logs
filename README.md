@@ -373,6 +373,15 @@ against a real us-east-1 account (KB-scale, ~cents):
 
 All resources were deleted afterward (bucket, log groups, IAM detached).
 
+### 2-hour sustained soak (2026-06-12)
+
+A 2 h LocalStack soak at 100 req/s × 10 events across 3 log groups:
+**715,817 requests / 7,158,170 events acked / 0 failures**, all
+**7,158,170 events durable** (0 loss), 3,878 flushes, **RSS delta 2.3 MiB**
+over the run (no leak). The 24 h Marketplace-gate soak uses the same
+harness (`soak.yml`, `S4LOGS_SOAK_SECONDS=86400`) and needs a self-hosted
+runner (GitHub-hosted jobs cap at 6 h).
+
 ## No lock-in: your data is plain zstd
 
 **Format stability**: from v1.0 the on-disk formats — the standard-zstd data
