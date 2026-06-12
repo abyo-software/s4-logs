@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/chunk.rs
++++ replace ChunkWriter::finish -> Result<Option<EncodedChunk>, ChunkError> with Ok(None)
+@@ -148,17 +148,17 @@
+         self.pending_min_ts = i64::MAX;
+         self.pending_max_ts = i64::MIN;
+         self.pending_records = 0;
+         Ok(())
+     }
+ 
+     /// Finalize, consuming the writer. Returns `None` if no record was pushed.
+     pub fn finish(self) -> Result<Option<EncodedChunk>, ChunkError> {
+-        self.encode()
++        Ok(None) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Encode **without consuming** the writer — the buffer stays usable, so
+     /// a caller whose store PUT fails can retry the same writer instead of
+     /// losing the events (gateway flush-failure recovery). The already-cut
+     /// frames are reused; only the uncut `pending` tail is compressed here,
+     /// into a clone, so `self` is untouched.
+     pub fn encode(&self) -> Result<Option<EncodedChunk>, ChunkError> {

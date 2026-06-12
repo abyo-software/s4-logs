@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/read.rs
++++ replace != with == in decompress_frames
+@@ -117,17 +117,17 @@
+     let cap = expected_original.saturating_add(BOMB_SLACK_BYTES);
+     let decoder = zstd::stream::read::Decoder::new(input)?;
+     let mut limited = decoder.take(cap);
+     let mut out = Vec::with_capacity((expected_original as usize).min(BOOTSTRAP_CAPACITY));
+     limited.read_to_end(&mut out)?;
+     if out.len() as u64 >= cap {
+         return Err(ReadError::Bomb { cap });
+     }
+-    if out.len() as u64 != expected_original {
++    if out.len() as u64 == /* ~ changed by cargo-mutants ~ */ expected_original {
+         return Err(ReadError::SizeMismatch {
+             expected: expected_original,
+             got: out.len() as u64,
+         });
+     }
+     Ok(out)
+ }
+ 

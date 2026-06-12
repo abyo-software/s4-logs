@@ -1,0 +1,2 @@
+crates/s4logs-core/src/read.rs:159:59: replace + with - in <impl Iterator for RecordLines<'_>>::next
+crates/s4logs-core/src/read.rs:159:59: replace + with * in <impl Iterator for RecordLines<'_>>::next

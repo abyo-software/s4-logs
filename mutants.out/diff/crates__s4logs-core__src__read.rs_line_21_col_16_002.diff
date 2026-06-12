@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/read.rs
++++ replace < with <= in TimeRange::overlaps
+@@ -13,17 +13,17 @@
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub struct TimeRange {
+     pub from_ms: i64,
+     pub to_ms_exclusive: i64,
+ }
+ 
+ impl TimeRange {
+     pub fn overlaps(&self, min_ts: i64, max_ts: i64) -> bool {
+-        min_ts < self.to_ms_exclusive && max_ts >= self.from_ms
++        min_ts <= /* ~ changed by cargo-mutants ~ */ self.to_ms_exclusive && max_ts >= self.from_ms
+     }
+ }
+ 
+ #[derive(Debug, Error)]
+ #[non_exhaustive]
+ pub enum ReadError {
+     #[error("S4IX has {frames} entries but S4LT has {ts_frames} — sidecars out of sync")]
+     IndexMismatch { frames: usize, ts_frames: usize },

@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/read.rs
++++ replace match guard s.byte_start.saturating_sub(*end) <= max_gap_bytes with false in coalesce_spans
+@@ -74,17 +74,17 @@
+ 
+ /// Merge spans whose gap is ≤ `max_gap_bytes` into fewer Range GETs.
+ /// Input must be in object order (as produced by [`frames_overlapping`]).
+ /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.
+ pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {
+     let mut out: Vec<(u64, u64, u64)> = Vec::new();
+     for s in spans {
+         match out.last_mut() {
+-            Some((_, end, orig)) if s.byte_start.saturating_sub(*end) <= max_gap_bytes => {
++            Some((_, end, orig)) if false /* ~ changed by cargo-mutants ~ */ => {
+                 *end = s.byte_end_exclusive;
+                 *orig += s.original_size;
+             }
+             _ => out.push((s.byte_start, s.byte_end_exclusive, s.original_size)),
+         }
+     }
+     out
+ }

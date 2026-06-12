@@ -1,0 +1,5 @@
+crates/s4logs-core/src/chunk.rs:156:9: replace ChunkWriter::finish -> Result<Option<EncodedChunk>, ChunkError> with Ok(Some(Default::default()))
+crates/s4logs-core/src/chunk.rs:165:9: replace ChunkWriter::encode -> Result<Option<EncodedChunk>, ChunkError> with Ok(Some(Default::default()))
+crates/s4logs-core/src/read.rs:54:5: replace frames_overlapping -> Result<Vec<FrameSpan>, ReadError> with Ok(vec![Default::default()])
+crates/s4logs-core/src/read.rs:122:25: replace >= with < in decompress_frames
+crates/s4logs-core/src/read.rs:154:9: replace <impl Iterator for RecordLines<'_>>::next -> Option<Self::Item> with Some(Default::default())

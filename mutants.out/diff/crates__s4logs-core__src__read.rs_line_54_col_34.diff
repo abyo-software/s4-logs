@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/read.rs
++++ replace != with == in frames_overlapping
+@@ -46,17 +46,17 @@
+ }
+ 
+ /// Frames whose S4LT timestamp range overlaps `range`, in object order.
+ pub fn frames_overlapping(
+     frame_index: &FrameIndex,
+     ts_index: &TsIndex,
+     range: &TimeRange,
+ ) -> Result<Vec<FrameSpan>, ReadError> {
+-    if frame_index.entries.len() != ts_index.entries.len() {
++    if frame_index.entries.len() == /* ~ changed by cargo-mutants ~ */ ts_index.entries.len() {
+         return Err(ReadError::IndexMismatch {
+             frames: frame_index.entries.len(),
+             ts_frames: ts_index.entries.len(),
+         });
+     }
+     Ok(frame_index
+         .entries
+         .iter()

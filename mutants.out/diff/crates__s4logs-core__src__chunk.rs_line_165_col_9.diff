@@ -1,0 +1,68 @@
+--- crates/s4logs-core/src/chunk.rs
++++ replace ChunkWriter::encode -> Result<Option<EncodedChunk>, ChunkError> with Ok(None)
+@@ -157,64 +157,17 @@
+     }
+ 
+     /// Encode **without consuming** the writer — the buffer stays usable, so
+     /// a caller whose store PUT fails can retry the same writer instead of
+     /// losing the events (gateway flush-failure recovery). The already-cut
+     /// frames are reused; only the uncut `pending` tail is compressed here,
+     /// into a clone, so `self` is untouched.
+     pub fn encode(&self) -> Result<Option<EncodedChunk>, ChunkError> {
+-        let mut entries = self.entries.clone();
+-        let mut ts_entries = self.ts_entries.clone();
+-        let mut body = self.body.clone();
+-        let mut original_off = self.original_off;
+-        let mut record_count = self.record_count;
+-        let mut min_ts = self.min_ts;
+-        let mut max_ts = self.max_ts;
+-        if !self.pending.is_empty() {
+-            let compressed = compress_frame(&self.pending, self.cfg.zstd_level)?;
+-            entries.push(FrameIndexEntry {
+-                original_offset: original_off,
+-                original_size: self.pending.len() as u64,
+-                compressed_offset: body.len() as u64,
+-                compressed_size: compressed.len() as u64,
+-            });
+-            ts_entries.push(TsEntry {
+-                min_ts: self.pending_min_ts,
+-                max_ts: self.pending_max_ts,
+-            });
+-            original_off += self.pending.len() as u64;
+-            body.extend_from_slice(&compressed);
+-            record_count += self.pending_records;
+-            min_ts = min_ts.min(self.pending_min_ts);
+-            max_ts = max_ts.max(self.pending_max_ts);
+-        }
+-        if entries.is_empty() {
+-            return Ok(None);
+-        }
+-        let body = Bytes::from(body);
+-        let crc = crc32c::crc32c(&body);
+-        Ok(Some(EncodedChunk {
+-            frame_index: FrameIndex {
+-                total_padded_size: body.len() as u64,
+-                entries,
+-                source_etag: None,
+-                source_compressed_size: None,
+-                sse_v3: None,
+-            },
+-            ts_index: TsIndex {
+-                entries: ts_entries,
+-            },
+-            record_count,
+-            uncompressed_bytes: original_off,
+-            min_timestamp: min_ts,
+-            max_timestamp: max_ts,
+-            crc32c: crc,
+-            body,
+-        }))
++        Ok(None) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ /// Compress one standalone standard zstd frame with content checksum.
+ fn compress_frame(input: &[u8], level: i32) -> std::io::Result<Vec<u8>> {
+     let mut enc =
+         zstd::stream::write::Encoder::new(Vec::with_capacity(input.len() / 4 + 64), level)?;
+     enc.include_checksum(true)?;

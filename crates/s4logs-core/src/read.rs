@@ -243,6 +243,14 @@ mod tests {
         assert!(matches!(err, ReadError::Bomb { .. }), "got {err:?}");
         let err = decompress_frames(&[], MAX_DECOMPRESSED_BYTES + 1).unwrap_err();
         assert!(matches!(err, ReadError::Bomb { .. }), "got {err:?}");
+        // Exactly at the ceiling is ALLOWED (the guard is `>`, not `>=`): the
+        // empty input then fails as a decode/size error, NOT a Bomb. Pins the
+        // boundary operator (mutation testing flagged `>` vs `>=`).
+        let err = decompress_frames(&[], MAX_DECOMPRESSED_BYTES).unwrap_err();
+        assert!(
+            !matches!(err, ReadError::Bomb { .. }),
+            "claim == ceiling must pass the bomb guard, got {err:?}"
+        );
     }
 
     #[test]

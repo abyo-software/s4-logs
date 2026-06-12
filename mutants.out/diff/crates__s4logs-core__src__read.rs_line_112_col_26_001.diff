@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/read.rs
++++ replace > with < in decompress_frames
+@@ -104,17 +104,17 @@
+ /// NOTE: when called on a *coalesced* span that includes skipped gap bytes,
+ /// pass the summed `original_size` of the member frames — gap frames decode
+ /// too (they are whole zstd frames), so prefer exact spans for grep and use
+ /// coalescing only when the caller filters records afterwards anyway.
+ pub fn decompress_frames(input: &[u8], expected_original: u64) -> Result<Vec<u8>, ReadError> {
+     // A forged sidecar/manifest can claim `expected_original` near u64::MAX;
+     // a plain `+` would panic in debug and wrap in release. Reject anything
+     // beyond a sane per-object ceiling before constructing the decoder.
+-    if expected_original > MAX_DECOMPRESSED_BYTES {
++    if expected_original < /* ~ changed by cargo-mutants ~ */ MAX_DECOMPRESSED_BYTES {
+         return Err(ReadError::Bomb {
+             cap: MAX_DECOMPRESSED_BYTES,
+         });
+     }
+     let cap = expected_original.saturating_add(BOMB_SLACK_BYTES);
+     let decoder = zstd::stream::read::Decoder::new(input)?;
+     let mut limited = decoder.take(cap);
+     let mut out = Vec::with_capacity((expected_original as usize).min(BOOTSTRAP_CAPACITY));

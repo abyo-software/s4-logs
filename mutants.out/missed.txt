@@ -1,0 +1,4 @@
+crates/s4logs-core/src/chunk.rs:109:27: replace + with - in ChunkWriter::uncompressed_len
+crates/s4logs-core/src/chunk.rs:113:27: replace + with - in ChunkWriter::record_count
+crates/s4logs-core/src/read.rs:95:37: replace << with >>
+crates/s4logs-core/src/read.rs:112:26: replace > with >= in decompress_frames

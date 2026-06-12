@@ -1,0 +1,4761 @@
+{
+  "outcomes": [
+    {
+      "scenario": "Baseline",
+      "summary": "Success",
+      "log_path": "log/baseline.log",
+      "diff_path": null,
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 82.201949748,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 2.128414002,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:103:9: replace ChunkWriter::is_empty -> bool with true",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::is_empty",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 102,
+                "column": 5
+              },
+              "end": {
+                "line": 104,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 103,
+              "column": 9
+            },
+            "end": {
+              "line": 103,
+              "column": 60
+            }
+          },
+          "replacement": "true",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_103_col_9.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_103_col_9.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.078329109,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.302214765,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:103:56: replace == with != in ChunkWriter::is_empty",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::is_empty",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 102,
+                "column": 5
+              },
+              "end": {
+                "line": 104,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 103,
+              "column": 56
+            },
+            "end": {
+              "line": 103,
+              "column": 58
+            }
+          },
+          "replacement": "!=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_103_col_56.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_103_col_56.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 4.692902126,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.252774198,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:109:9: replace ChunkWriter::uncompressed_len -> u64 with 0",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::uncompressed_len",
+            "return_type": "-> u64",
+            "span": {
+              "start": {
+                "line": 106,
+                "column": 5
+              },
+              "end": {
+                "line": 110,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 109,
+              "column": 9
+            },
+            "end": {
+              "line": 109,
+              "column": 54
+            }
+          },
+          "replacement": "0",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_109_col_9.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_109_col_9.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 4.896569026,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.301658543,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:109:9: replace ChunkWriter::uncompressed_len -> u64 with 1",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::uncompressed_len",
+            "return_type": "-> u64",
+            "span": {
+              "start": {
+                "line": 106,
+                "column": 5
+              },
+              "end": {
+                "line": 110,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 109,
+              "column": 9
+            },
+            "end": {
+              "line": 109,
+              "column": 54
+            }
+          },
+          "replacement": "1",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_109_col_9_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_109_col_9_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.429166453,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.359186913,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:109:27: replace + with - in ChunkWriter::uncompressed_len",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::uncompressed_len",
+            "return_type": "-> u64",
+            "span": {
+              "start": {
+                "line": 106,
+                "column": 5
+              },
+              "end": {
+                "line": 110,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 109,
+              "column": 27
+            },
+            "end": {
+              "line": 109,
+              "column": 28
+            }
+          },
+          "replacement": "-",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_109_col_27.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_109_col_27.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 4.398946077,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 2.110989213,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:109:27: replace + with * in ChunkWriter::uncompressed_len",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::uncompressed_len",
+            "return_type": "-> u64",
+            "span": {
+              "start": {
+                "line": 106,
+                "column": 5
+              },
+              "end": {
+                "line": 110,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 109,
+              "column": 27
+            },
+            "end": {
+              "line": 109,
+              "column": 28
+            }
+          },
+          "replacement": "*",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_109_col_27_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_109_col_27_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 4.646917718,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.301984339,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:113:9: replace ChunkWriter::record_count -> u64 with 0",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::record_count",
+            "return_type": "-> u64",
+            "span": {
+              "start": {
+                "line": 112,
+                "column": 5
+              },
+              "end": {
+                "line": 114,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 113,
+              "column": 9
+            },
+            "end": {
+              "line": 113,
+              "column": 49
+            }
+          },
+          "replacement": "0",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_113_col_9.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_113_col_9.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.009908508,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.30244477,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:113:9: replace ChunkWriter::record_count -> u64 with 1",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::record_count",
+            "return_type": "-> u64",
+            "span": {
+              "start": {
+                "line": 112,
+                "column": 5
+              },
+              "end": {
+                "line": 114,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 113,
+              "column": 9
+            },
+            "end": {
+              "line": 113,
+              "column": 49
+            }
+          },
+          "replacement": "1",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_113_col_9_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_113_col_9_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 6.453615225,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.251400799,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:113:27: replace + with - in ChunkWriter::record_count",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::record_count",
+            "return_type": "-> u64",
+            "span": {
+              "start": {
+                "line": 112,
+                "column": 5
+              },
+              "end": {
+                "line": 114,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 113,
+              "column": 27
+            },
+            "end": {
+              "line": 113,
+              "column": 28
+            }
+          },
+          "replacement": "-",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_113_col_27.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_113_col_27.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.510822404,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 2.11411697,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:113:27: replace + with * in ChunkWriter::record_count",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::record_count",
+            "return_type": "-> u64",
+            "span": {
+              "start": {
+                "line": 112,
+                "column": 5
+              },
+              "end": {
+                "line": 114,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 113,
+              "column": 27
+            },
+            "end": {
+              "line": 113,
+              "column": 28
+            }
+          },
+          "replacement": "*",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_113_col_27_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_113_col_27_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.708037263,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.301882506,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:117:9: replace ChunkWriter::push -> Result<(), ChunkError> with Ok(())",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::push",
+            "return_type": "-> Result<(), ChunkError>",
+            "span": {
+              "start": {
+                "line": 116,
+                "column": 5
+              },
+              "end": {
+                "line": 125,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 117,
+              "column": 9
+            },
+            "end": {
+              "line": 124,
+              "column": 15
+            }
+          },
+          "replacement": "Ok(())",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_117_col_9.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_117_col_9.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.186002547,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.251686349,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:120:30: replace += with -= in ChunkWriter::push",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::push",
+            "return_type": "-> Result<(), ChunkError>",
+            "span": {
+              "start": {
+                "line": 116,
+                "column": 5
+              },
+              "end": {
+                "line": 125,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 120,
+              "column": 30
+            },
+            "end": {
+              "line": 120,
+              "column": 32
+            }
+          },
+          "replacement": "-=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_120_col_30.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_120_col_30.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.481954004,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.354083847,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:120:30: replace += with *= in ChunkWriter::push",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::push",
+            "return_type": "-> Result<(), ChunkError>",
+            "span": {
+              "start": {
+                "line": 116,
+                "column": 5
+              },
+              "end": {
+                "line": 125,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 120,
+              "column": 30
+            },
+            "end": {
+              "line": 120,
+              "column": 32
+            }
+          },
+          "replacement": "*=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_120_col_30_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_120_col_30_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.428425438,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.403753147,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:121:31: replace >= with < in ChunkWriter::push",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::push",
+            "return_type": "-> Result<(), ChunkError>",
+            "span": {
+              "start": {
+                "line": 116,
+                "column": 5
+              },
+              "end": {
+                "line": 125,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 121,
+              "column": 31
+            },
+            "end": {
+              "line": 121,
+              "column": 33
+            }
+          },
+          "replacement": "<",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_121_col_31.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_121_col_31.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.3272171999999998,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.354922444,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:128:9: replace ChunkWriter::cut_frame -> Result<(), ChunkError> with Ok(())",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::cut_frame",
+            "return_type": "-> Result<(), ChunkError>",
+            "span": {
+              "start": {
+                "line": 127,
+                "column": 5
+              },
+              "end": {
+                "line": 152,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 128,
+              "column": 9
+            },
+            "end": {
+              "line": 151,
+              "column": 15
+            }
+          },
+          "replacement": "Ok(())",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_128_col_9.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_128_col_9.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.630448288,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.301323518,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:142:27: replace += with -= in ChunkWriter::cut_frame",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::cut_frame",
+            "return_type": "-> Result<(), ChunkError>",
+            "span": {
+              "start": {
+                "line": 127,
+                "column": 5
+              },
+              "end": {
+                "line": 152,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 142,
+              "column": 27
+            },
+            "end": {
+              "line": 142,
+              "column": 29
+            }
+          },
+          "replacement": "-=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_142_col_27.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_142_col_27.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.532831596,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.512208877,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:142:27: replace += with *= in ChunkWriter::cut_frame",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::cut_frame",
+            "return_type": "-> Result<(), ChunkError>",
+            "span": {
+              "start": {
+                "line": 127,
+                "column": 5
+              },
+              "end": {
+                "line": 152,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 142,
+              "column": 27
+            },
+            "end": {
+              "line": 142,
+              "column": 29
+            }
+          },
+          "replacement": "*=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_142_col_27_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_142_col_27_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 1.821239141,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.352552309,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:144:27: replace += with -= in ChunkWriter::cut_frame",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::cut_frame",
+            "return_type": "-> Result<(), ChunkError>",
+            "span": {
+              "start": {
+                "line": 127,
+                "column": 5
+              },
+              "end": {
+                "line": 152,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 144,
+              "column": 27
+            },
+            "end": {
+              "line": 144,
+              "column": 29
+            }
+          },
+          "replacement": "-=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_144_col_27.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_144_col_27.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.466168792,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.303816094,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:144:27: replace += with *= in ChunkWriter::cut_frame",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::cut_frame",
+            "return_type": "-> Result<(), ChunkError>",
+            "span": {
+              "start": {
+                "line": 127,
+                "column": 5
+              },
+              "end": {
+                "line": 152,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 144,
+              "column": 27
+            },
+            "end": {
+              "line": 144,
+              "column": 29
+            }
+          },
+          "replacement": "*=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_144_col_27_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_144_col_27_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 1.458106273,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.457497408,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:156:9: replace ChunkWriter::finish -> Result<Option<EncodedChunk>, ChunkError> with Ok(None)",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::finish",
+            "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+            "span": {
+              "start": {
+                "line": 154,
+                "column": 5
+              },
+              "end": {
+                "line": 157,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 156,
+              "column": 9
+            },
+            "end": {
+              "line": 156,
+              "column": 22
+            }
+          },
+          "replacement": "Ok(None)",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_156_col_9.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_156_col_9.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 1.921275612,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.353327075,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:156:9: replace ChunkWriter::finish -> Result<Option<EncodedChunk>, ChunkError> with Ok(Some(Default::default()))",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::finish",
+            "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+            "span": {
+              "start": {
+                "line": 154,
+                "column": 5
+              },
+              "end": {
+                "line": 157,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 156,
+              "column": 9
+            },
+            "end": {
+              "line": 156,
+              "column": 22
+            }
+          },
+          "replacement": "Ok(Some(Default::default()))",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "Unviable",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_156_col_9_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_156_col_9_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 1.006540589,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:165:9: replace ChunkWriter::encode -> Result<Option<EncodedChunk>, ChunkError> with Ok(None)",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::encode",
+            "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+            "span": {
+              "start": {
+                "line": 159,
+                "column": 5
+              },
+              "end": {
+                "line": 213,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 165,
+              "column": 9
+            },
+            "end": {
+              "line": 212,
+              "column": 12
+            }
+          },
+          "replacement": "Ok(None)",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_165_col_9.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_165_col_9.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.572788469,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.61510564,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:165:9: replace ChunkWriter::encode -> Result<Option<EncodedChunk>, ChunkError> with Ok(Some(Default::default()))",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::encode",
+            "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+            "span": {
+              "start": {
+                "line": 159,
+                "column": 5
+              },
+              "end": {
+                "line": 213,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 165,
+              "column": 9
+            },
+            "end": {
+              "line": 212,
+              "column": 12
+            }
+          },
+          "replacement": "Ok(Some(Default::default()))",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "Unviable",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_165_col_9_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_165_col_9_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.866428922,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:172:12: delete ! in ChunkWriter::encode",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::encode",
+            "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+            "span": {
+              "start": {
+                "line": 159,
+                "column": 5
+              },
+              "end": {
+                "line": 213,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 172,
+              "column": 12
+            },
+            "end": {
+              "line": 172,
+              "column": 13
+            }
+          },
+          "replacement": "",
+          "genre": "UnaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_172_col_12.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_172_col_12.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 1.662550645,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.303969645,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:184:26: replace += with -= in ChunkWriter::encode",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::encode",
+            "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+            "span": {
+              "start": {
+                "line": 159,
+                "column": 5
+              },
+              "end": {
+                "line": 213,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 184,
+              "column": 26
+            },
+            "end": {
+              "line": 184,
+              "column": 28
+            }
+          },
+          "replacement": "-=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_184_col_26.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_184_col_26.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.328728279,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.25117394,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:184:26: replace += with *= in ChunkWriter::encode",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::encode",
+            "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+            "span": {
+              "start": {
+                "line": 159,
+                "column": 5
+              },
+              "end": {
+                "line": 213,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 184,
+              "column": 26
+            },
+            "end": {
+              "line": 184,
+              "column": 28
+            }
+          },
+          "replacement": "*=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_184_col_26_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_184_col_26_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 1.867775293,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.511343801,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:186:26: replace += with -= in ChunkWriter::encode",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::encode",
+            "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+            "span": {
+              "start": {
+                "line": 159,
+                "column": 5
+              },
+              "end": {
+                "line": 213,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 186,
+              "column": 26
+            },
+            "end": {
+              "line": 186,
+              "column": 28
+            }
+          },
+          "replacement": "-=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_186_col_26.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_186_col_26.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 1.7632113459999998,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.554298035,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:186:26: replace += with *= in ChunkWriter::encode",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::encode",
+            "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+            "span": {
+              "start": {
+                "line": 159,
+                "column": 5
+              },
+              "end": {
+                "line": 213,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 186,
+              "column": 26
+            },
+            "end": {
+              "line": 186,
+              "column": 28
+            }
+          },
+          "replacement": "*=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_186_col_26_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_186_col_26_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 1.767558662,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.30784069,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:218:5: replace compress_frame -> std::io::Result<Vec<u8>> with Ok(vec![])",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "compress_frame",
+            "return_type": "-> std::io::Result<Vec<u8>>",
+            "span": {
+              "start": {
+                "line": 216,
+                "column": 1
+              },
+              "end": {
+                "line": 224,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 218,
+              "column": 5
+            },
+            "end": {
+              "line": 223,
+              "column": 17
+            }
+          },
+          "replacement": "Ok(vec![])",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_218_col_5.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_218_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.372512644,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.301478442,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:218:5: replace compress_frame -> std::io::Result<Vec<u8>> with Ok(vec![0])",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "compress_frame",
+            "return_type": "-> std::io::Result<Vec<u8>>",
+            "span": {
+              "start": {
+                "line": 216,
+                "column": 1
+              },
+              "end": {
+                "line": 224,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 218,
+              "column": 5
+            },
+            "end": {
+              "line": 223,
+              "column": 17
+            }
+          },
+          "replacement": "Ok(vec![0])",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_218_col_5_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_218_col_5_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.118013402,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.301634697,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:218:5: replace compress_frame -> std::io::Result<Vec<u8>> with Ok(vec![1])",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "compress_frame",
+            "return_type": "-> std::io::Result<Vec<u8>>",
+            "span": {
+              "start": {
+                "line": 216,
+                "column": 1
+              },
+              "end": {
+                "line": 224,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 218,
+              "column": 5
+            },
+            "end": {
+              "line": 223,
+              "column": 17
+            }
+          },
+          "replacement": "Ok(vec![1])",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_218_col_5_002.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_218_col_5_002.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 1.405980645,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.412621758,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:21:9: replace TimeRange::overlaps -> bool with true",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "TimeRange::overlaps",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 20,
+                "column": 5
+              },
+              "end": {
+                "line": 22,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 21,
+              "column": 9
+            },
+            "end": {
+              "line": 21,
+              "column": 64
+            }
+          },
+          "replacement": "true",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_21_col_9.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_21_col_9.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.417368587,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.558108435,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:21:9: replace TimeRange::overlaps -> bool with false",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "TimeRange::overlaps",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 20,
+                "column": 5
+              },
+              "end": {
+                "line": 22,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 21,
+              "column": 9
+            },
+            "end": {
+              "line": 21,
+              "column": 64
+            }
+          },
+          "replacement": "false",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_21_col_9_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_21_col_9_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.071110056,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.301696434,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:21:39: replace && with || in TimeRange::overlaps",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "TimeRange::overlaps",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 20,
+                "column": 5
+              },
+              "end": {
+                "line": 22,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 21,
+              "column": 39
+            },
+            "end": {
+              "line": 21,
+              "column": 41
+            }
+          },
+          "replacement": "||",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_21_col_39.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_21_col_39.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 1.817737223,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.251377606,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:21:16: replace < with == in TimeRange::overlaps",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "TimeRange::overlaps",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 20,
+                "column": 5
+              },
+              "end": {
+                "line": 22,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 21,
+              "column": 16
+            },
+            "end": {
+              "line": 21,
+              "column": 17
+            }
+          },
+          "replacement": "==",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_21_col_16.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_21_col_16.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.260178865,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.255195569,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:21:16: replace < with > in TimeRange::overlaps",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "TimeRange::overlaps",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 20,
+                "column": 5
+              },
+              "end": {
+                "line": 22,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 21,
+              "column": 16
+            },
+            "end": {
+              "line": 21,
+              "column": 17
+            }
+          },
+          "replacement": ">",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_21_col_16_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_21_col_16_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 1.555941438,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.558992287,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:21:16: replace < with <= in TimeRange::overlaps",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "TimeRange::overlaps",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 20,
+                "column": 5
+              },
+              "end": {
+                "line": 22,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 21,
+              "column": 16
+            },
+            "end": {
+              "line": 21,
+              "column": 17
+            }
+          },
+          "replacement": "<=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_21_col_16_002.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_21_col_16_002.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.426581439,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.959554206,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:21:49: replace >= with < in TimeRange::overlaps",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "TimeRange::overlaps",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 20,
+                "column": 5
+              },
+              "end": {
+                "line": 22,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 21,
+              "column": 49
+            },
+            "end": {
+              "line": 21,
+              "column": 51
+            }
+          },
+          "replacement": "<",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_21_col_49.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_21_col_49.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.215713442,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.560994145,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:54:5: replace frames_overlapping -> Result<Vec<FrameSpan>, ReadError> with Ok(vec![])",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "frames_overlapping",
+            "return_type": "-> Result<Vec<FrameSpan>, ReadError>",
+            "span": {
+              "start": {
+                "line": 48,
+                "column": 1
+              },
+              "end": {
+                "line": 73,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 54,
+              "column": 5
+            },
+            "end": {
+              "line": 72,
+              "column": 20
+            }
+          },
+          "replacement": "Ok(vec![])",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_54_col_5.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_54_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.901594096,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.656176681,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:54:5: replace frames_overlapping -> Result<Vec<FrameSpan>, ReadError> with Ok(vec![Default::default()])",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "frames_overlapping",
+            "return_type": "-> Result<Vec<FrameSpan>, ReadError>",
+            "span": {
+              "start": {
+                "line": 48,
+                "column": 1
+              },
+              "end": {
+                "line": 73,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 54,
+              "column": 5
+            },
+            "end": {
+              "line": 72,
+              "column": 20
+            }
+          },
+          "replacement": "Ok(vec![Default::default()])",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "Unviable",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_54_col_5_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_54_col_5_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.654187637,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:103:32: replace && with || in ChunkWriter::is_empty",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::is_empty",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 102,
+                "column": 5
+              },
+              "end": {
+                "line": 104,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 103,
+              "column": 32
+            },
+            "end": {
+              "line": 103,
+              "column": 34
+            }
+          },
+          "replacement": "||",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_103_col_32.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_103_col_32.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 132.292833655,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.761538417,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:103:9: replace ChunkWriter::is_empty -> bool with false",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::is_empty",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 102,
+                "column": 5
+              },
+              "end": {
+                "line": 104,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 103,
+              "column": 9
+            },
+            "end": {
+              "line": 103,
+              "column": 60
+            }
+          },
+          "replacement": "false",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_103_col_9_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_103_col_9_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 132.415799391,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.914819533,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/chunk.rs:103:27: replace == with != in ChunkWriter::is_empty",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/chunk.rs",
+          "function": {
+            "function_name": "ChunkWriter::is_empty",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 102,
+                "column": 5
+              },
+              "end": {
+                "line": 104,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 103,
+              "column": 27
+            },
+            "end": {
+              "line": 103,
+              "column": 29
+            }
+          },
+          "replacement": "!=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__chunk.rs_line_103_col_27.log",
+      "diff_path": "diff/crates__s4logs-core__src__chunk.rs_line_103_col_27.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 134.056005948,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.506879985,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:54:34: replace != with == in frames_overlapping",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "frames_overlapping",
+            "return_type": "-> Result<Vec<FrameSpan>, ReadError>",
+            "span": {
+              "start": {
+                "line": 48,
+                "column": 1
+              },
+              "end": {
+                "line": 73,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 54,
+              "column": 34
+            },
+            "end": {
+              "line": 54,
+              "column": 36
+            }
+          },
+          "replacement": "==",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_54_col_34.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_54_col_34.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.908622099,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.552347825,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![]",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "coalesce_spans",
+            "return_type": "-> Vec<(u64, u64, u64)>",
+            "span": {
+              "start": {
+                "line": 75,
+                "column": 1
+              },
+              "end": {
+                "line": 90,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 79,
+              "column": 5
+            },
+            "end": {
+              "line": 89,
+              "column": 8
+            }
+          },
+          "replacement": "vec![]",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_79_col_5.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_79_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.989205397,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.401857971,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(0, 0, 0)]",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "coalesce_spans",
+            "return_type": "-> Vec<(u64, u64, u64)>",
+            "span": {
+              "start": {
+                "line": 75,
+                "column": 1
+              },
+              "end": {
+                "line": 90,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 79,
+              "column": 5
+            },
+            "end": {
+              "line": 89,
+              "column": 8
+            }
+          },
+          "replacement": "vec![(0, 0, 0)]",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_79_col_5_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_79_col_5_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.9309869710000003,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.911365798,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(0, 1, 0)]",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "coalesce_spans",
+            "return_type": "-> Vec<(u64, u64, u64)>",
+            "span": {
+              "start": {
+                "line": 75,
+                "column": 1
+              },
+              "end": {
+                "line": 90,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 79,
+              "column": 5
+            },
+            "end": {
+              "line": 89,
+              "column": 8
+            }
+          },
+          "replacement": "vec![(0, 1, 0)]",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_79_col_5_003.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_79_col_5_003.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.626042075,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.453021868,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(0, 0, 1)]",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "coalesce_spans",
+            "return_type": "-> Vec<(u64, u64, u64)>",
+            "span": {
+              "start": {
+                "line": 75,
+                "column": 1
+              },
+              "end": {
+                "line": 90,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 79,
+              "column": 5
+            },
+            "end": {
+              "line": 89,
+              "column": 8
+            }
+          },
+          "replacement": "vec![(0, 0, 1)]",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_79_col_5_002.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_79_col_5_002.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.584428477,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.558062248,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(1, 0, 0)]",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "coalesce_spans",
+            "return_type": "-> Vec<(u64, u64, u64)>",
+            "span": {
+              "start": {
+                "line": 75,
+                "column": 1
+              },
+              "end": {
+                "line": 90,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 79,
+              "column": 5
+            },
+            "end": {
+              "line": 89,
+              "column": 8
+            }
+          },
+          "replacement": "vec![(1, 0, 0)]",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_79_col_5_005.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_79_col_5_005.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.643183224,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.40239144,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(0, 1, 1)]",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "coalesce_spans",
+            "return_type": "-> Vec<(u64, u64, u64)>",
+            "span": {
+              "start": {
+                "line": 75,
+                "column": 1
+              },
+              "end": {
+                "line": 90,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 79,
+              "column": 5
+            },
+            "end": {
+              "line": 89,
+              "column": 8
+            }
+          },
+          "replacement": "vec![(0, 1, 1)]",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_79_col_5_004.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_79_col_5_004.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.476929537,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.505858973,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(1, 0, 1)]",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "coalesce_spans",
+            "return_type": "-> Vec<(u64, u64, u64)>",
+            "span": {
+              "start": {
+                "line": 75,
+                "column": 1
+              },
+              "end": {
+                "line": 90,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 79,
+              "column": 5
+            },
+            "end": {
+              "line": 89,
+              "column": 8
+            }
+          },
+          "replacement": "vec![(1, 0, 1)]",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_79_col_5_006.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_79_col_5_006.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.145340843,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.503565573,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(1, 1, 0)]",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "coalesce_spans",
+            "return_type": "-> Vec<(u64, u64, u64)>",
+            "span": {
+              "start": {
+                "line": 75,
+                "column": 1
+              },
+              "end": {
+                "line": 90,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 79,
+              "column": 5
+            },
+            "end": {
+              "line": 89,
+              "column": 8
+            }
+          },
+          "replacement": "vec![(1, 1, 0)]",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_79_col_5_007.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_79_col_5_007.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.132515456,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.513952156,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(1, 1, 1)]",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "coalesce_spans",
+            "return_type": "-> Vec<(u64, u64, u64)>",
+            "span": {
+              "start": {
+                "line": 75,
+                "column": 1
+              },
+              "end": {
+                "line": 90,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 79,
+              "column": 5
+            },
+            "end": {
+              "line": 89,
+              "column": 8
+            }
+          },
+          "replacement": "vec![(1, 1, 1)]",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_79_col_5_008.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_79_col_5_008.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.928334312,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.45291146,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:82:37: replace match guard s.byte_start.saturating_sub(*end) <= max_gap_bytes with true in coalesce_spans",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "coalesce_spans",
+            "return_type": "-> Vec<(u64, u64, u64)>",
+            "span": {
+              "start": {
+                "line": 75,
+                "column": 1
+              },
+              "end": {
+                "line": 90,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 82,
+              "column": 37
+            },
+            "end": {
+              "line": 82,
+              "column": 87
+            }
+          },
+          "replacement": "true",
+          "genre": "MatchArmGuard"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_82_col_37.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_82_col_37.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.331101453,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.563936131,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:82:37: replace match guard s.byte_start.saturating_sub(*end) <= max_gap_bytes with false in coalesce_spans",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "coalesce_spans",
+            "return_type": "-> Vec<(u64, u64, u64)>",
+            "span": {
+              "start": {
+                "line": 75,
+                "column": 1
+              },
+              "end": {
+                "line": 90,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 82,
+              "column": 37
+            },
+            "end": {
+              "line": 82,
+              "column": 87
+            }
+          },
+          "replacement": "false",
+          "genre": "MatchArmGuard"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_82_col_37_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_82_col_37_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.676024928,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.914219417,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:82:71: replace <= with > in coalesce_spans",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "coalesce_spans",
+            "return_type": "-> Vec<(u64, u64, u64)>",
+            "span": {
+              "start": {
+                "line": 75,
+                "column": 1
+              },
+              "end": {
+                "line": 90,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 82,
+              "column": 71
+            },
+            "end": {
+              "line": 82,
+              "column": 73
+            }
+          },
+          "replacement": ">",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_82_col_71.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_82_col_71.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.5890110269999997,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.959268446,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:84:23: replace += with *= in coalesce_spans",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "coalesce_spans",
+            "return_type": "-> Vec<(u64, u64, u64)>",
+            "span": {
+              "start": {
+                "line": 75,
+                "column": 1
+              },
+              "end": {
+                "line": 90,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 84,
+              "column": 23
+            },
+            "end": {
+              "line": 84,
+              "column": 25
+            }
+          },
+          "replacement": "*=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_84_col_23_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_84_col_23_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.024767805,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.803622385,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:84:23: replace += with -= in coalesce_spans",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "coalesce_spans",
+            "return_type": "-> Vec<(u64, u64, u64)>",
+            "span": {
+              "start": {
+                "line": 75,
+                "column": 1
+              },
+              "end": {
+                "line": 90,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 84,
+              "column": 23
+            },
+            "end": {
+              "line": 84,
+              "column": 25
+            }
+          },
+          "replacement": "-=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_84_col_23.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_84_col_23.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.605284319,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.959291058,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:99:44: replace << with >>",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": null,
+          "span": {
+            "start": {
+              "line": 99,
+              "column": 44
+            },
+            "end": {
+              "line": 99,
+              "column": 46
+            }
+          },
+          "replacement": ">>",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_99_col_44.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_99_col_44.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.7803520219999998,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.554692301,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:112:5: replace decompress_frames -> Result<Vec<u8>, ReadError> with Ok(vec![])",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "decompress_frames",
+            "return_type": "-> Result<Vec<u8>, ReadError>",
+            "span": {
+              "start": {
+                "line": 101,
+                "column": 1
+              },
+              "end": {
+                "line": 132,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 112,
+              "column": 5
+            },
+            "end": {
+              "line": 131,
+              "column": 12
+            }
+          },
+          "replacement": "Ok(vec![])",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_112_col_5.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_112_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.3381851559999998,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.554285902,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:112:5: replace decompress_frames -> Result<Vec<u8>, ReadError> with Ok(vec![0])",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "decompress_frames",
+            "return_type": "-> Result<Vec<u8>, ReadError>",
+            "span": {
+              "start": {
+                "line": 101,
+                "column": 1
+              },
+              "end": {
+                "line": 132,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 112,
+              "column": 5
+            },
+            "end": {
+              "line": 131,
+              "column": 12
+            }
+          },
+          "replacement": "Ok(vec![0])",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_112_col_5_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_112_col_5_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.493211323,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.50650735,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:95:37: replace << with >>",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": null,
+          "span": {
+            "start": {
+              "line": 95,
+              "column": 37
+            },
+            "end": {
+              "line": 95,
+              "column": 39
+            }
+          },
+          "replacement": ">>",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_95_col_37.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_95_col_37.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.741122126,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 2.533681864,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:112:5: replace decompress_frames -> Result<Vec<u8>, ReadError> with Ok(vec![1])",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "decompress_frames",
+            "return_type": "-> Result<Vec<u8>, ReadError>",
+            "span": {
+              "start": {
+                "line": 101,
+                "column": 1
+              },
+              "end": {
+                "line": 132,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 112,
+              "column": 5
+            },
+            "end": {
+              "line": 131,
+              "column": 12
+            }
+          },
+          "replacement": "Ok(vec![1])",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_112_col_5_002.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_112_col_5_002.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.932859524,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.555179142,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:122:25: replace >= with < in decompress_frames",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "decompress_frames",
+            "return_type": "-> Result<Vec<u8>, ReadError>",
+            "span": {
+              "start": {
+                "line": 101,
+                "column": 1
+              },
+              "end": {
+                "line": 132,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 122,
+              "column": 25
+            },
+            "end": {
+              "line": 122,
+              "column": 27
+            }
+          },
+          "replacement": "<",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "Unviable",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_122_col_25.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_122_col_25.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 1.362911263,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:112:26: replace > with == in decompress_frames",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "decompress_frames",
+            "return_type": "-> Result<Vec<u8>, ReadError>",
+            "span": {
+              "start": {
+                "line": 101,
+                "column": 1
+              },
+              "end": {
+                "line": 132,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 112,
+              "column": 26
+            },
+            "end": {
+              "line": 112,
+              "column": 27
+            }
+          },
+          "replacement": "==",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_112_col_26.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_112_col_26.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.440523112,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.555205462,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:112:26: replace > with < in decompress_frames",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "decompress_frames",
+            "return_type": "-> Result<Vec<u8>, ReadError>",
+            "span": {
+              "start": {
+                "line": 101,
+                "column": 1
+              },
+              "end": {
+                "line": 132,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 112,
+              "column": 26
+            },
+            "end": {
+              "line": 112,
+              "column": 27
+            }
+          },
+          "replacement": "<",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_112_col_26_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_112_col_26_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.422740094,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.50564082,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:154:9: replace <impl Iterator for RecordLines<'_>>::next -> Option<Self::Item> with Some(Default::default())",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "<impl Iterator for RecordLines<'_>>::next",
+            "return_type": "-> Option<Self::Item>",
+            "span": {
+              "start": {
+                "line": 153,
+                "column": 5
+              },
+              "end": {
+                "line": 167,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 154,
+              "column": 9
+            },
+            "end": {
+              "line": 166,
+              "column": 10
+            }
+          },
+          "replacement": "Some(Default::default())",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "Unviable",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_154_col_9_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_154_col_9_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 1.312892753,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:112:26: replace > with >= in decompress_frames",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "decompress_frames",
+            "return_type": "-> Result<Vec<u8>, ReadError>",
+            "span": {
+              "start": {
+                "line": 101,
+                "column": 1
+              },
+              "end": {
+                "line": 132,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 112,
+              "column": 26
+            },
+            "end": {
+              "line": 112,
+              "column": 27
+            }
+          },
+          "replacement": ">=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_112_col_26_002.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_112_col_26_002.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.828841821,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 2.579910936,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:125:25: replace != with == in decompress_frames",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "decompress_frames",
+            "return_type": "-> Result<Vec<u8>, ReadError>",
+            "span": {
+              "start": {
+                "line": 101,
+                "column": 1
+              },
+              "end": {
+                "line": 132,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 125,
+              "column": 25
+            },
+            "end": {
+              "line": 125,
+              "column": 27
+            }
+          },
+          "replacement": "==",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_125_col_25.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_125_col_25.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.729493152,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.856911885,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:154:9: replace <impl Iterator for RecordLines<'_>>::next -> Option<Self::Item> with None",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "<impl Iterator for RecordLines<'_>>::next",
+            "return_type": "-> Option<Self::Item>",
+            "span": {
+              "start": {
+                "line": 153,
+                "column": 5
+              },
+              "end": {
+                "line": 167,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 154,
+              "column": 9
+            },
+            "end": {
+              "line": 166,
+              "column": 10
+            }
+          },
+          "replacement": "None",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_154_col_9.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_154_col_9.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.567555016,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.669600551,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:158:71: replace == with != in <impl Iterator for RecordLines<'_>>::next",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "<impl Iterator for RecordLines<'_>>::next",
+            "return_type": "-> Option<Self::Item>",
+            "span": {
+              "start": {
+                "line": 153,
+                "column": 5
+              },
+              "end": {
+                "line": 167,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 158,
+              "column": 71
+            },
+            "end": {
+              "line": 158,
+              "column": 73
+            }
+          },
+          "replacement": "!=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_158_col_71.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_158_col_71.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.184155986,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.857063872,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:163:16: delete ! in <impl Iterator for RecordLines<'_>>::next",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "<impl Iterator for RecordLines<'_>>::next",
+            "return_type": "-> Option<Self::Item>",
+            "span": {
+              "start": {
+                "line": 153,
+                "column": 5
+              },
+              "end": {
+                "line": 167,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 163,
+              "column": 16
+            },
+            "end": {
+              "line": 163,
+              "column": 17
+            }
+          },
+          "replacement": "",
+          "genre": "UnaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_163_col_16.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_163_col_16.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.492588866,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.504046754,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:159:59: replace + with - in <impl Iterator for RecordLines<'_>>::next",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "<impl Iterator for RecordLines<'_>>::next",
+            "return_type": "-> Option<Self::Item>",
+            "span": {
+              "start": {
+                "line": 153,
+                "column": 5
+              },
+              "end": {
+                "line": 167,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 159,
+              "column": 59
+            },
+            "end": {
+              "line": 159,
+              "column": 60
+            }
+          },
+          "replacement": "-",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "Timeout",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_159_col_59.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_159_col_59.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.442725078,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 60.011793937,
+          "process_status": "Timeout",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/s4logs-core/src/read.rs:159:59: replace + with * in <impl Iterator for RecordLines<'_>>::next",
+          "package": "s4logs-core",
+          "file": "crates/s4logs-core/src/read.rs",
+          "function": {
+            "function_name": "<impl Iterator for RecordLines<'_>>::next",
+            "return_type": "-> Option<Self::Item>",
+            "span": {
+              "start": {
+                "line": 153,
+                "column": 5
+              },
+              "end": {
+                "line": 167,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 159,
+              "column": 59
+            },
+            "end": {
+              "line": 159,
+              "column": 60
+            }
+          },
+          "replacement": "*",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "Timeout",
+      "log_path": "log/crates__s4logs-core__src__read.rs_line_159_col_59_001.log",
+      "diff_path": "diff/crates__s4logs-core__src__read.rs_line_159_col_59_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 3.27626151,
+          "process_status": "Success",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 60.03809365,
+          "process_status": "Timeout",
+          "argv": [
+            "/data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=s4logs-core@0.4.3"
+          ]
+        }
+      ]
+    }
+  ],
+  "total_mutants": 74,
+  "missed": 4,
+  "caught": 63,
+  "timeout": 2,
+  "unviable": 5,
+  "success": 0,
+  "start_time": "2026-06-12T06:19:59.096124982Z",
+  "end_time": "2026-06-12T06:25:05.809505061Z",
+  "cargo_mutants_version": "27.0.0"
+}

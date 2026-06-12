@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/chunk.rs
++++ replace ChunkWriter::uncompressed_len -> u64 with 0
+@@ -101,17 +101,17 @@
+ 
+     pub fn is_empty(&self) -> bool {
+         self.record_count == 0 && self.pending_records == 0
+     }
+ 
+     /// Total uncompressed bytes accepted so far (flush-threshold signal for
+     /// the gateway buffer).
+     pub fn uncompressed_len(&self) -> u64 {
+-        self.original_off + self.pending.len() as u64
++        0 /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     pub fn record_count(&self) -> u64 {
+         self.record_count + self.pending_records
+     }
+ 
+     pub fn push(&mut self, rec: &LogRecord) -> Result<(), ChunkError> {
+         rec.append_jsonl(&mut self.pending)?;

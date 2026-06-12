@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/read.rs
++++ replace << with >>
+@@ -87,17 +87,17 @@
+         }
+     }
+     out
+ }
+ 
+ /// How much slack the bomb cap allows over the sidecar-claimed size
+ /// (mirrors s4 `cpu_zstd.rs`).
+ pub const BOMB_SLACK_BYTES: u64 = 1024;
+-const BOOTSTRAP_CAPACITY: usize = 1 << 20;
++const BOOTSTRAP_CAPACITY: usize = 1 >> /* ~ changed by cargo-mutants ~ */ 20;
+ /// Hard ceiling on a single object's decompressed size (64 GiB). A claimed
+ /// `expected_original` above this is treated as a hostile sidecar — real log
+ /// objects are bounded by the drain `--chunk-target` (default 256 MiB).
+ pub const MAX_DECOMPRESSED_BYTES: u64 = 64 << 30;
+ 
+ /// Decompress one or more concatenated standard zstd frames, refusing to
+ /// emit more than `expected_original + BOMB_SLACK_BYTES` bytes.
+ ///

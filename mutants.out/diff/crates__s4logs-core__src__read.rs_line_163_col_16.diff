@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/read.rs
++++ delete ! in <impl Iterator for RecordLines<'_>>::next
+@@ -155,17 +155,17 @@
+             if self.rest.is_empty() {
+                 return None;
+             }
+             let (line, rest) = match self.rest.iter().position(|&b| b == b'\n') {
+                 Some(i) => (&self.rest[..i], &self.rest[i + 1..]),
+                 None => (self.rest, &self.rest[..0]),
+             };
+             self.rest = rest;
+-            if !line.is_empty() {
++            if  /* ~ changed by cargo-mutants ~ */line.is_empty() {
+                 return Some(LogRecord::from_jsonl(line));
+             }
+         }
+     }
+ }
+ 
+ #[cfg(test)]
+ #[allow(clippy::unwrap_used)]

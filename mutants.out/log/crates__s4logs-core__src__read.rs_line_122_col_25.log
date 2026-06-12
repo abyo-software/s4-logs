@@ -1,0 +1,351 @@
+
+*** crates/s4logs-core/src/read.rs:122:25: replace >= with < in decompress_frames
+
+*** mutation diff:
+--- crates/s4logs-core/src/read.rs
++++ replace >= with < in decompress_frames
+@@ -114,17 +114,17 @@
+             cap: MAX_DECOMPRESSED_BYTES,
+         });
+     }
+     let cap = expected_original.saturating_add(BOMB_SLACK_BYTES);
+     let decoder = zstd::stream::read::Decoder::new(input)?;
+     let mut limited = decoder.take(cap);
+     let mut out = Vec::with_capacity((expected_original as usize).min(BOOTSTRAP_CAPACITY));
+     limited.read_to_end(&mut out)?;
+-    if out.len() as u64 >= cap {
++    if out.len() as u64 < /* ~ changed by cargo-mutants ~ */ cap {
+         return Err(ReadError::Bomb { cap });
+     }
+     if out.len() as u64 != expected_original {
+         return Err(ReadError::SizeMismatch {
+             expected: expected_original,
+             got: out.len() as u64,
+         });
+     }
+
+
+*** /data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo test --no-run --verbose --package=s4logs-core@0.4.3
+       Fresh libc v0.2.186
+       Fresh unicode-ident v1.0.24
+       Fresh proc-macro2 v1.0.106
+       Fresh quote v1.0.45
+       Fresh syn v2.0.117
+       Fresh cfg-if v1.0.4
+       Fresh zeroize v1.8.2
+       Fresh smallvec v1.15.1
+       Fresh pin-project-lite v0.2.17
+       Fresh bytes v1.11.1
+       Fresh once_cell v1.21.4
+       Fresh itoa v1.0.18
+       Fresh jobserver v0.1.34
+       Fresh find-msvc-tools v0.1.9
+       Fresh shlex v2.0.1
+       Fresh cc v1.2.63
+       Fresh scopeguard v1.2.0
+       Fresh lock_api v0.4.14
+       Fresh parking_lot_core v0.9.12
+       Fresh errno v0.3.14
+       Fresh futures-core v0.3.32
+       Fresh memchr v2.8.1
+       Fresh signal-hook-registry v1.4.8
+       Fresh parking_lot v0.12.5
+       Fresh tokio-macros v2.7.0
+       Fresh mio v1.2.1
+       Fresh socket2 v0.6.4
+       Fresh futures-sink v0.3.32
+       Fresh tokio v1.52.3
+       Fresh equivalent v1.0.2
+       Fresh fnv v1.0.7
+       Fresh tracing-core v0.1.36
+       Fresh autocfg v1.5.1
+       Fresh typenum v1.20.1
+       Fresh slab v0.4.12
+       Fresh hashbrown v0.17.1
+       Fresh futures-channel v0.3.32
+       Fresh tracing-attributes v0.1.31
+       Fresh tracing v0.1.44
+       Fresh num-traits v0.2.19
+       Fresh tokio-util v0.7.18
+       Fresh futures-macro v0.3.32
+       Fresh either v1.16.0
+       Fresh subtle v2.6.1
+       Fresh futures-task v0.3.32
+       Fresh futures-io v0.3.32
+       Fresh futures-util v0.3.32
+       Fresh serde_core v1.0.228
+       Fresh http v1.4.2
+       Fresh synstructure v0.13.2
+       Fresh zerofrom-derive v0.1.7
+       Fresh http-body v1.0.1
+       Fresh http v0.2.12
+       Fresh getrandom v0.2.17
+       Fresh version_check v0.9.5
+       Fresh zerofrom v0.1.8
+       Fresh yoke-derive v0.8.2
+       Fresh num-integer v0.1.46
+       Fresh stable_deref_trait v1.2.1
+       Fresh yoke v0.8.3
+       Fresh http-body v0.4.6
+       Fresh powerfmt v0.2.0
+       Fresh deranged v0.5.8
+       Fresh generic-array v0.14.7
+       Fresh zerovec-derive v0.11.3
+       Fresh zerocopy-derive v0.8.52
+       Fresh vsimd v0.8.0
+       Fresh time-core v0.1.8
+       Fresh num-conv v0.2.2
+       Fresh const-oid v0.9.6
+       Fresh outref v0.5.2
+       Fresh base64-simd v0.8.0
+       Fresh time v0.3.47
+       Fresh zerocopy v0.8.52
+       Fresh zerovec v0.11.6
+       Fresh http-body-util v0.1.3
+       Fresh bytes-utils v0.1.4
+       Fresh displaydoc v0.2.6
+       Fresh ryu v1.0.23
+       Fresh pin-utils v0.1.0
+       Fresh aws-smithy-types v1.4.9
+       Fresh aws-smithy-async v1.2.14
+       Fresh cmake v0.1.58
+       Fresh aws-smithy-runtime-api-macros v1.0.0
+       Fresh dunce v1.0.5
+       Fresh fs_extra v1.3.0
+       Fresh untrusted v0.9.0
+       Fresh aws-smithy-runtime-api v1.12.3
+       Fresh tinystr v0.8.3
+       Fresh crypto-common v0.1.7
+       Fresh block-buffer v0.10.4
+       Fresh serde_derive v1.0.228
+       Fresh writeable v0.6.3
+       Fresh percent-encoding v2.3.2
+       Fresh litemap v0.8.2
+       Fresh icu_locale_core v2.2.0
+       Fresh serde v1.0.228
+       Fresh digest v0.10.7
+       Fresh zerotrie v0.2.4
+       Fresh potential_utf v0.1.5
+       Fresh utf8_iter v1.0.4
+       Fresh icu_collections v2.2.0
+       Fresh icu_provider v2.2.0
+       Fresh base64ct v1.8.3
+       Fresh pem-rfc7468 v0.7.0
+       Fresh zmij v1.0.21
+       Fresh icu_normalizer_data v2.2.0
+       Fresh icu_properties_data v2.2.0
+       Fresh rand_core v0.6.4
+       Fresh hybrid-array v0.4.12
+       Fresh try-lock v0.2.5
+       Fresh want v0.3.1
+       Fresh icu_properties v2.2.0
+       Fresh icu_normalizer v2.2.0
+       Fresh serde_json v1.0.150
+       Fresh httparse v1.10.1
+       Fresh der v0.7.10
+       Fresh ring v0.17.14
+       Fresh aws-lc-sys v0.41.0
+       Fresh half v2.7.1
+       Fresh rustls-pki-types v1.14.1
+       Fresh semver v1.0.28
+       Fresh tower-service v0.3.3
+       Fresh log v0.4.32
+       Fresh cmov v0.5.4
+       Fresh aws-lc-rs v1.17.0
+       Fresh spki v0.7.3
+       Fresh idna_adapter v1.2.2
+       Fresh crc32fast v1.5.0
+       Fresh crypto-common v0.2.2
+       Fresh block-buffer v0.12.0
+       Fresh form_urlencoded v1.2.2
+       Fresh atomic-waker v1.1.2
+       Fresh ciborium-io v0.2.2
+       Fresh regex-syntax v0.8.11
+       Fresh const-oid v0.10.2
+       Fresh rustls-webpki v0.101.7
+       Fresh sct v0.7.1
+       Fresh ff v0.13.1
+       Fresh num-bigint v0.4.6
+       Fresh thiserror-impl v2.0.18
+       Fresh base16ct v0.2.0
+       Fresh xmlparser v0.13.6
+       Fresh minimal-lexical v0.2.1
+       Fresh ctutils v0.4.2
+       Fresh rustc_version v0.4.1
+       Fresh h2 v0.4.14
+       Fresh ciborium-ll v0.2.2
+       Fresh pkcs8 v0.10.2
+       Fresh rustls-webpki v0.103.13
+       Fresh idna v1.1.0
+       Fresh nom v7.1.3
+       Fresh num-rational v0.4.2
+       Fresh group v0.13.0
+       Fresh regex-automata v0.4.14
+       Fresh crypto-bigint v0.5.5
+       Fresh h2 v0.3.27
+       Fresh chrono v0.4.45
+       Fresh socket2 v0.5.10
+       Fresh bs58 v0.5.1
+       Fresh lazy_static v1.5.0
+       Fresh pkg-config v0.3.33
+       Fresh openssl-probe v0.2.1
+       Fresh diff v0.1.13
+       Fresh separator v0.4.1
+       Fresh httpdate v1.0.3
+       Fresh ipnet v2.12.0
+       Fresh digest v0.11.3
+       Fresh getrandom v0.3.4
+       Fresh thiserror v2.0.18
+       Fresh hyper v1.10.1
+       Fresh sec1 v0.7.3
+       Fresh rustls v0.23.40
+       Fresh rustls v0.21.12
+       Fresh ciborium v0.2.2
+       Fresh url v2.5.8
+       Fresh base64 v0.22.1
+       Fresh yansi v1.0.1
+       Fresh uuid v1.23.3
+       Fresh data-encoding v2.11.0
+       Fresh hyper v0.14.32
+       Fresh rustls-native-certs v0.8.4
+       Fresh roxmltree v0.14.1
+       Fresh aws-smithy-eventstream v0.60.20
+       Fresh assert-json-diff v2.0.2
+       Fresh hmac v0.12.1
+       Fresh cpufeatures v0.3.0
+       Fresh tower-layer v0.3.3
+       Fresh fastrand v2.4.1
+       Fresh regex-lite v0.1.9
+       Fresh signature v2.2.0
+       Fresh aws-smithy-schema v0.1.0
+       Fresh indexmap v2.14.0
+       Fresh rand_core v0.9.5
+       Fresh tokio-rustls v0.26.4
+       Fresh hyper-util v0.1.20
+       Fresh pretty_assertions v1.4.1
+       Fresh elliptic-curve v0.13.8
+       Fresh cbor-diag v0.1.12
+       Fresh tokio-rustls v0.24.1
+       Fresh aws-smithy-http v0.63.6
+       Fresh tower v0.5.3
+       Fresh rfc6979 v0.4.0
+       Fresh winnow v0.5.40
+       Fresh cpufeatures v0.2.17
+       Fresh toml_datetime v0.6.3
+       Fresh sha2 v0.11.0
+       Fresh sharded-slab v0.1.7
+       Fresh matchers v0.2.0
+       Fresh tracing-log v0.2.0
+       Fresh tracing-serde v0.2.0
+       Fresh aws-credential-types v1.2.14
+       Fresh ppv-lite86 v0.2.21
+       Fresh thread_local v1.1.9
+       Fresh hyper-rustls v0.27.9
+       Fresh hyper-rustls v0.24.2
+       Fresh aws-smithy-protocol-test v0.63.14
+       Fresh sha2 v0.10.9
+       Fresh primeorder v0.13.6
+       Fresh ecdsa v0.16.9
+       Fresh toml_edit v0.20.2
+       Fresh nu-ansi-term v0.50.3
+       Fresh hex v0.4.3
+       Fresh zstd-sys v2.0.16+zstd.1.5.7
+       Fresh rand_chacha v0.9.0
+       Fresh hmac v0.13.0
+       Fresh aws-smithy-observability v0.2.6
+       Fresh linux-raw-sys v0.12.1
+       Fresh allocator-api2 v0.2.21
+       Fresh foldhash v0.2.0
+       Fresh simd-adler32 v0.3.9
+       Fresh bitflags v2.13.0
+       Fresh adler2 v2.0.1
+       Fresh spin v0.10.0
+       Fresh aws-smithy-http-client v1.1.13
+       Fresh proc-macro-crate v2.0.2
+       Fresh anyhow v1.0.102
+       Fresh p256 v0.13.2
+       Fresh tracing-subscriber v0.3.23
+       Fresh zstd-safe v7.2.4
+       Fresh aws-types v1.3.16
+       Fresh crc-fast v1.10.0
+       Fresh miniz_oxide v0.8.9
+       Fresh rustversion v1.0.22
+       Fresh hashbrown v0.16.1
+       Fresh rand v0.9.4
+       Fresh getrandom v0.4.2
+       Fresh rand_xoshiro v0.7.0
+       Fresh md-5 v0.11.0
+       Fresh sha1 v0.11.0
+       Fresh clap_lex v1.1.0
+       Fresh anstyle v1.0.14
+       Fresh aws-smithy-json v0.62.7
+       Fresh aws-smithy-xml v0.60.15
+       Fresh futures-executor v0.3.32
+       Fresh itertools v0.10.5
+       Fresh async-trait v0.1.89
+       Fresh wait-timeout v0.2.1
+       Fresh rustix v1.1.4
+       Fresh aws-smithy-runtime v1.11.3
+       Fresh bolero-generator-derive v0.13.4
+       Fresh aws-sigv4 v1.4.5
+       Fresh crc32c v0.6.8
+       Fresh zstd v0.13.3
+       Fresh arc-swap v1.9.1
+       Fresh clap_builder v4.6.0
+       Fresh flate2 v1.1.9
+       Fresh aws-smithy-checksums v0.64.8
+       Fresh lru v0.16.4
+       Fresh bit-vec v0.8.0
+       Fresh pretty-hex v0.4.2
+       Fresh same-file v1.0.6
+       Fresh cast v0.3.0
+       Fresh quick-error v1.2.3
+       Fresh futures v0.3.32
+       Fresh rand_xorshift v0.4.0
+       Fresh regex v1.12.4
+       Fresh tinytemplate v1.2.1
+       Fresh is-terminal v0.4.17
+       Fresh anes v0.1.6
+       Fresh oorandom v11.1.5
+       Fresh unarray v0.1.4
+       Fresh aws-smithy-mocks v0.2.6
+       Fresh bolero-generator v0.13.5
+       Fresh aws-runtime v1.7.4
+       Fresh tempfile v3.27.0
+       Fresh clap v4.6.1
+       Fresh walkdir v2.5.0
+       Fresh bit-set v0.8.0
+       Fresh criterion-plot v0.5.0
+       Fresh s4-codec v1.0.0 (https://github.com/abyo-software/s4?tag=v1.0.0#af3c69b6)
+       Fresh rusty-fork v0.3.1
+       Fresh bolero-engine v0.13.4
+       Fresh aws-sdk-s3 v1.135.0
+       Fresh criterion v0.5.1
+       Fresh proptest v1.11.0
+       Fresh bolero v0.13.4
+       Dirty s4logs-core v0.4.3 (/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/crates/s4logs-core): the file `crates/s4logs-core/src/read.rs` has changed (1781245437.197249685s, 3s after last build at 1781245434.199202820s)
+   Compiling s4logs-core v0.4.3 (/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/crates/s4logs-core)
+     Running `sccache /home/y1/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name s4logs_core --edition=2024 crates/s4logs-core/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--deny=clippy::unwrap_used' --deny=unsafe_code --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=2efc8cc5c75f363e -C extra-filename=-69f32fdb2f8a8497 --out-dir /tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps --extern async_trait=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libasync_trait-c48a4b7d28a0b527.so --extern aws_sdk_s3=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libaws_sdk_s3-8e3b4b6b530c0252.rlib --extern aws_smithy_mocks=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libaws_smithy_mocks-2f6eab90e5cfeba0.rlib --extern bolero=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libbolero-d44e8b6e9b88aad4.rlib --extern bytes=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libbytes-c38b0fd35cc6fecb.rlib --extern chrono=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libchrono-ef119c569afcd814.rlib --extern crc32c=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libcrc32c-5d6af4d3c1e6d829.rlib --extern criterion=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libcriterion-e4fca11cf42cad6f.rlib --extern futures=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libfutures-074f1502fbe09421.rlib --extern proptest=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libproptest-a30253af6afedc96.rlib --extern s4_codec=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libs4_codec-b776df230ecbac67.rlib --extern serde=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libserde-275b5d7a048ce175.rlib --extern serde_json=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libserde_json-311e3bf3dc78b90a.rlib --extern tempfile=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libtempfile-1bdec42a39898dfc.rlib --extern thiserror=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libthiserror-1d46a5990c5ef7d0.rlib --extern tokio=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libtokio-4ad2b2b6518199d6.rlib --extern tracing=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libtracing-7f0711ec7e078f28.rlib --extern zstd=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libzstd-9256fbd3455aef60.rlib -C link-arg=-fuse-ld=mold -L native=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/build/ring-f389914ce3ea36f8/out -L native=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/build/aws-lc-sys-ffdabcfce1d618e5/out -L native=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/build/zstd-sys-a112ef480bb2db37/out`
+     Running `sccache /home/y1/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name s4logs_core --edition=2024 crates/s4logs-core/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 '--deny=clippy::unwrap_used' --deny=unsafe_code --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=02e7244b93040bba -C extra-filename=-7751c253e94c726e --out-dir /tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps --extern async_trait=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libasync_trait-c48a4b7d28a0b527.so --extern aws_sdk_s3=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libaws_sdk_s3-8e3b4b6b530c0252.rmeta --extern bytes=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libbytes-c38b0fd35cc6fecb.rmeta --extern chrono=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libchrono-ef119c569afcd814.rmeta --extern crc32c=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libcrc32c-5d6af4d3c1e6d829.rmeta --extern futures=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libfutures-074f1502fbe09421.rmeta --extern s4_codec=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libs4_codec-b776df230ecbac67.rmeta --extern serde=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libserde-275b5d7a048ce175.rmeta --extern serde_json=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libserde_json-311e3bf3dc78b90a.rmeta --extern thiserror=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libthiserror-1d46a5990c5ef7d0.rmeta --extern tokio=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libtokio-4ad2b2b6518199d6.rmeta --extern tracing=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libtracing-7f0711ec7e078f28.rmeta --extern zstd=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libzstd-9256fbd3455aef60.rmeta -C link-arg=-fuse-ld=mold -L native=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/build/ring-f389914ce3ea36f8/out -L native=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/build/aws-lc-sys-ffdabcfce1d618e5/out -L native=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/build/zstd-sys-a112ef480bb2db37/out`
+error: `<` is interpreted as a start of generic arguments for `u64`, not a comparison
+   --> crates/s4logs-core/src/read.rs:122:25
+    |
+122 |     if out.len() as u64 < /* ~ changed by cargo-mutants ~ */ cap {
+    |                         ^ not interpreted as comparison      ----- interpreted as generic arguments
+    |
+help: try comparing the cast value
+    |
+122 |     if (out.len() as u64) < /* ~ changed by cargo-mutants ~ */ cap {
+    |        +                +
+
+error: could not compile `s4logs-core` (lib) due to 1 previous error
+
+Caused by:
+  process didn't exit successfully: `sccache /home/y1/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name s4logs_core --edition=2024 crates/s4logs-core/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 '--deny=clippy::unwrap_used' --deny=unsafe_code --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=02e7244b93040bba -C extra-filename=-7751c253e94c726e --out-dir /tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps --extern async_trait=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libasync_trait-c48a4b7d28a0b527.so --extern aws_sdk_s3=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libaws_sdk_s3-8e3b4b6b530c0252.rmeta --extern bytes=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libbytes-c38b0fd35cc6fecb.rmeta --extern chrono=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libchrono-ef119c569afcd814.rmeta --extern crc32c=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libcrc32c-5d6af4d3c1e6d829.rmeta --extern futures=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libfutures-074f1502fbe09421.rmeta --extern s4_codec=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libs4_codec-b776df230ecbac67.rmeta --extern serde=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libserde-275b5d7a048ce175.rmeta --extern serde_json=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libserde_json-311e3bf3dc78b90a.rmeta --extern thiserror=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libthiserror-1d46a5990c5ef7d0.rmeta --extern tokio=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libtokio-4ad2b2b6518199d6.rmeta --extern tracing=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libtracing-7f0711ec7e078f28.rmeta --extern zstd=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libzstd-9256fbd3455aef60.rmeta -C link-arg=-fuse-ld=mold -L native=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/build/ring-f389914ce3ea36f8/out -L native=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/build/aws-lc-sys-ffdabcfce1d618e5/out -L native=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/build/zstd-sys-a112ef480bb2db37/out` (exit status: 1)
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `s4logs-core` (lib test) due to 1 previous error
+
+Caused by:
+  process didn't exit successfully: `sccache /home/y1/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name s4logs_core --edition=2024 crates/s4logs-core/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--deny=clippy::unwrap_used' --deny=unsafe_code --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=2efc8cc5c75f363e -C extra-filename=-69f32fdb2f8a8497 --out-dir /tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps --extern async_trait=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libasync_trait-c48a4b7d28a0b527.so --extern aws_sdk_s3=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libaws_sdk_s3-8e3b4b6b530c0252.rlib --extern aws_smithy_mocks=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libaws_smithy_mocks-2f6eab90e5cfeba0.rlib --extern bolero=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libbolero-d44e8b6e9b88aad4.rlib --extern bytes=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libbytes-c38b0fd35cc6fecb.rlib --extern chrono=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libchrono-ef119c569afcd814.rlib --extern crc32c=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libcrc32c-5d6af4d3c1e6d829.rlib --extern criterion=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libcriterion-e4fca11cf42cad6f.rlib --extern futures=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libfutures-074f1502fbe09421.rlib --extern proptest=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libproptest-a30253af6afedc96.rlib --extern s4_codec=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libs4_codec-b776df230ecbac67.rlib --extern serde=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libserde-275b5d7a048ce175.rlib --extern serde_json=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libserde_json-311e3bf3dc78b90a.rlib --extern tempfile=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libtempfile-1bdec42a39898dfc.rlib --extern thiserror=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libthiserror-1d46a5990c5ef7d0.rlib --extern tokio=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libtokio-4ad2b2b6518199d6.rlib --extern tracing=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libtracing-7f0711ec7e078f28.rlib --extern zstd=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/deps/libzstd-9256fbd3455aef60.rlib -C link-arg=-fuse-ld=mold -L native=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/build/ring-f389914ce3ea36f8/out -L native=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/build/aws-lc-sys-ffdabcfce1d618e5/out -L native=/tmp/cargo-mutants-s4-logs-9qh5GY.tmp/target/debug/build/zstd-sys-a112ef480bb2db37/out` (exit status: 1)
+
+*** result: Failure(101)
