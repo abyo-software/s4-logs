@@ -29,16 +29,11 @@ security advisory unless requested otherwise.
 
 ## Supported versions
 
-S4 Logs is **pre-1.0** (currently v0.4.x). While we are pre-1.0, security
-fixes land on the **latest released minor only** — the `main` branch always
-carries the most recent fixes, and we expect you to track the latest
-release. There is no backport window before v1.0.
-
-Once v1.0 ships (the on-disk format + crate API freeze; see the
-[Unreleased] section of [CHANGELOG.md](CHANGELOG.md)), this policy moves to
-a rolling window of two minors on the v1.x line — security fixes for the
-latest minor plus the previous minor, with patch releases cut from the
-affected minor.
+S4 Logs is **1.x** (current stable: v1.0.0, with the on-disk formats frozen
+for the 1.x series — see [DESIGN.md §14](DESIGN.md)). Security fixes land on
+the **latest 1.x minor**, with patch releases cut from it; the `main` branch
+always carries the most recent fixes. As further minors ship we will support
+a rolling window of the latest minor plus the previous one.
 
 ## Threat model
 

@@ -7,11 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added (v1.0 preparation)
+## [1.0.0] — 2026-06-13
 
-- **Format-freeze contract** ([DESIGN.md §14](DESIGN.md)) stating which
-  on-disk formats are stable for the 1.x series; surfaced in the README and
-  in code-doc markers on the format modules.
+First stable release. **The on-disk formats are now frozen for the 1.x
+series** (DESIGN.md §14): the JSONL record schema, the S3 key layout, the
+`S4LT` timestamp sidecar, the manifest JSON, and the reused `s4-codec` S4IX
+index. Any 1.x release reads what any other 1.x release wrote; new fields
+are added as optional only, and breaking changes wait for a 2.0 that keeps a
+1.x read path. The CLI subcommand set is the SemVer-stable command surface;
+output text and metric names remain implementation detail.
+
+No functional change from 0.4.3 — 1.0.0 is the stability commitment plus the
+release-readiness work below.
+
+### Added
+
+- **Format-freeze contract** ([DESIGN.md §14](DESIGN.md)), surfaced in the
+  README and in code-doc markers on the format modules.
 - **Governance docs**: SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, and
   this changelog.
 - **Supply-chain gate**: `deny.toml` + a `cargo deny check` CI job. The
@@ -19,27 +31,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   documented-and-ignored with justification (the active HTTPS client uses
   the patched rustls 0.23 / webpki 0.103.13; the legacy connector is
   compiled but never constructed).
+
+### Quality / verification
+
 - **Mutation testing** (cargo-mutants) pass; closed the surfaced test gaps
   in `TimeRange::overlaps`, `coalesce_spans`, the decompression bomb-cap
   boundary, and the `ChunkWriter` accessors.
-
-### Verified
-
 - **Mode B (gateway) + restore validated against real AWS** (2026-06-12),
   previously LocalStack-only: real-S3 buffering, `both`/`s3` routing
   isolation, CloudWatch passthrough, real-S3 grep range reads, and
-  `restore --to-log-group` with the 14-day wrap.
-
-### Pending
-
-- **v1.0 format freeze.** S4 Logs is pre-1.0; the on-disk formats (the JSONL
-  record schema, the S3 layout, the `S4LT` timestamp sidecar, the manifest
-  JSON shape) and the `s4-codec` S4IX index it reuses are stable in practice
-  and now documented as frozen-for-1.x (DESIGN.md §14), but the **1.0 tag**
-  that declares the SemVer-stable surface — formats above plus the `s4logs`
-  subcommand set — has not been cut. Until then, additive manifest fields
-  keep the byte-compat discipline (older manifests read as `None` for newly
-  added optional fields).
+  `restore --to-log-group` with the 14-day wrap. (Mode A was validated in
+  the 0.x experiment, 2026-06-10.)
+- **2-hour sustained soak**: 715,817 requests / 7,158,170 events acked / 0
+  failures, all events durable, RSS delta 2.3 MiB (no leak). The 24 h
+  Marketplace-gate soak uses the same harness on a self-hosted runner.
 
 ## [0.4.3] — 2026-06-12
 
