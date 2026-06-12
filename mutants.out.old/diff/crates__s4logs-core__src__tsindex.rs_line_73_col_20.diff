@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/tsindex.rs
++++ replace < with == in decode_ts_index
+@@ -65,17 +65,17 @@
+     for e in &idx.entries {
+         buf.put_i64_le(e.min_ts);
+         buf.put_i64_le(e.max_ts);
+     }
+     buf.freeze()
+ }
+ 
+ pub fn decode_ts_index(mut input: Bytes) -> Result<TsIndex, TsIndexError> {
+-    if input.len() < TS_HEADER_BYTES {
++    if input.len() == /* ~ changed by cargo-mutants ~ */ TS_HEADER_BYTES {
+         return Err(TsIndexError::TooShort(input.len()));
+     }
+     let mut magic = [0u8; 4];
+     magic.copy_from_slice(&input[..4]);
+     if &magic != TS_INDEX_MAGIC {
+         return Err(TsIndexError::BadMagic { got: magic });
+     }
+     input.advance(4);

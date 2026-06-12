@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/read.rs
++++ replace + with - in <impl Iterator for RecordLines<'_>>::next
+@@ -151,17 +151,17 @@
+     type Item = Result<LogRecord, RecordError>;
+ 
+     fn next(&mut self) -> Option<Self::Item> {
+         loop {
+             if self.rest.is_empty() {
+                 return None;
+             }
+             let (line, rest) = match self.rest.iter().position(|&b| b == b'\n') {
+-                Some(i) => (&self.rest[..i], &self.rest[i + 1..]),
++                Some(i) => (&self.rest[..i], &self.rest[i - /* ~ changed by cargo-mutants ~ */ 1..]),
+                 None => (self.rest, &self.rest[..0]),
+             };
+             self.rest = rest;
+             if !line.is_empty() {
+                 return Some(LogRecord::from_jsonl(line));
+             }
+         }
+     }

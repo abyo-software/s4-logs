@@ -1,0 +1,26 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace <impl ManifestStore for MemoryManifestStore>::get -> Result<Option<Bytes>, ManifestError> with Ok(None)
+@@ -228,22 +228,17 @@
+         Ok(self
+             .objects
+             .lock()
+             .unwrap_or_else(|e| e.into_inner())
+             .contains_key(key))
+     }
+ 
+     async fn get(&self, key: &str) -> Result<Option<Bytes>, ManifestError> {
+-        Ok(self
+-            .objects
+-            .lock()
+-            .unwrap_or_else(|e| e.into_inner())
+-            .get(key)
+-            .cloned())
++        Ok(None) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     async fn put(&self, key: &str, body: Bytes) -> Result<(), ManifestError> {
+         self.objects
+             .lock()
+             .unwrap_or_else(|e| e.into_inner())
+             .insert(key.to_owned(), body);
+         Ok(())

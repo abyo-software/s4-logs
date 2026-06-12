@@ -1,0 +1,24 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace MemoryManifestStore::is_empty -> bool with true
+@@ -210,20 +210,17 @@
+             .lock()
+             .unwrap_or_else(|e| e.into_inner())
+             .keys()
+             .cloned()
+             .collect()
+     }
+ 
+     pub fn is_empty(&self) -> bool {
+-        self.objects
+-            .lock()
+-            .unwrap_or_else(|e| e.into_inner())
+-            .is_empty()
++        true /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[async_trait]
+ impl ManifestStore for MemoryManifestStore {
+     async fn exists(&self, key: &str) -> Result<bool, ManifestError> {
+         Ok(self
+             .objects

@@ -358,6 +358,15 @@ Total experiment cost: ~$2.60 (5 GiB × $0.50 ingest + cents of S3/Athena).
 
 ## No lock-in: your data is plain zstd
 
+**Format stability**: from v1.0 the on-disk formats — the standard-zstd data
+objects and their JSONL schema, the `.s4index` / `.s4lts` sidecars, the
+manifest JSON, and the S3 key layout — are **frozen for the 1.x series**.
+Any 1.x release reads data any other 1.x release wrote; new fields are only
+ever added as optional. Breaking changes wait for 2.0 and keep a 1.x read
+path. Full contract: [DESIGN.md §14](DESIGN.md). (The CLI flags, output
+text, and metric names are implementation detail and may evolve under
+semver-minor; only the persisted formats are frozen.)
+
 Data objects are concatenated **standard RFC 8878 zstd frames** — not a
 custom container. If S4 Logs disappears tomorrow:
 

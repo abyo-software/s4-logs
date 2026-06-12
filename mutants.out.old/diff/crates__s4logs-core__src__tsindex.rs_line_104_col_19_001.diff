@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/tsindex.rs
++++ replace > with < in decode_ts_index
+@@ -96,17 +96,17 @@
+     }
+     // Same bootstrap-capacity discipline as s4-codec `decode_index`: never
+     // pre-allocate more than a sane bound off an attacker-supplied count.
+     const BOOTSTRAP_ENTRIES: usize = 4096;
+     let mut entries = Vec::with_capacity((n as usize).min(BOOTSTRAP_ENTRIES));
+     for idx in 0..n {
+         let min_ts = input.get_i64_le();
+         let max_ts = input.get_i64_le();
+-        if min_ts > max_ts {
++        if min_ts < /* ~ changed by cargo-mutants ~ */ max_ts {
+             return Err(TsIndexError::InvalidEntry {
+                 idx: idx as usize,
+                 min_ts,
+                 max_ts,
+             });
+         }
+         entries.push(TsEntry { min_ts, max_ts });
+     }

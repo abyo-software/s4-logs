@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/chunk.rs
++++ delete ! in ChunkWriter::encode
+@@ -164,17 +164,17 @@
+     pub fn encode(&self) -> Result<Option<EncodedChunk>, ChunkError> {
+         let mut entries = self.entries.clone();
+         let mut ts_entries = self.ts_entries.clone();
+         let mut body = self.body.clone();
+         let mut original_off = self.original_off;
+         let mut record_count = self.record_count;
+         let mut min_ts = self.min_ts;
+         let mut max_ts = self.max_ts;
+-        if !self.pending.is_empty() {
++        if  /* ~ changed by cargo-mutants ~ */self.pending.is_empty() {
+             let compressed = compress_frame(&self.pending, self.cfg.zstd_level)?;
+             entries.push(FrameIndexEntry {
+                 original_offset: original_off,
+                 original_size: self.pending.len() as u64,
+                 compressed_offset: body.len() as u64,
+                 compressed_size: compressed.len() as u64,
+             });
+             ts_entries.push(TsEntry {

@@ -244,3 +244,46 @@ action = "cloudwatch"
   ceiling として維持。
 - **WAL**: segment create/delete で親 dir を fsync (power-loss safe、§11.1
   の caveat 解消)。`s4logs_wal_dir_fsync_errors_total` を追加。
+
+## 14. v1.0 format stability contract (2026-06-12)
+
+v1.0 以降、以下の **on-disk フォーマットは 1.x 系列で凍結**する。1.x の
+どのバージョンが書いたデータも、1.x のどのバージョンでも読める
+(forward/backward 互換)。破壊的変更は 2.0 でのみ、かつ旧フォーマット
+読み取り経路を残した上で行う。
+
+### 凍結対象 (1.x freeze)
+
+1. **データオブジェクト**: 標準 RFC 8878 zstd マルチフレーム連結
+   (`{name}.jsonl.zst`)。`zstd -dc` で復号でき、中身は §2 の JSONL schema。
+   フィールド名 (`timestamp` / `stream` / `message` / `ingestion_time` /
+   `event_id`) は API の一部であり rename しない。新フィールドは optional
+   追加のみ (旧 reader が無視できる形)。
+2. **S4IX sidecar** (`.s4index`): s4-codec の `INDEX_VERSION` に従う。s4 本体
+   が 1.x で凍結しているため S4 Logs も追従。
+3. **S4LT sidecar** (`.s4lts`): magic `S4LT` + version 1。レイアウトは §5。
+   新バージョンが必要になっても version field の dispatch で旧 v1 読み取りを
+   保持する (s4-codec の decode_index と同じ規律)。
+4. **manifest JSON** (version=1): §7 のフィールド。`raw_bytes` /
+   `storage_class` / `reconciled_at_ms` / `reconciled_added` は optional 追加
+   で、旧 manifest は欠損として読め、欠損は典型 lower-bound 表示で扱う。今後の
+   追加フィールドも同じ skip-if-none 規律を守る。
+5. **S3 key layout** (§3): `data/` `index/` `manifest/` prefix 分離、
+   `account=` / `loggroup=` (percent-encoded) / `dt=` パーティション、
+   オブジェクト命名 (`{window_start_ms}-{seq:06}` / `{...}-r{attempt:02}{seq:04}`
+   / `{first_event_ts_ms}-{uuid8}`)。Athena/Glue の外部テーブル定義が依存する
+   ため凍結。
+
+### 凍結対象外 (互換性保証なし)
+
+- gateway の HTTP wire は CloudWatch Logs API に追従するもので S4 Logs の
+  フォーマットではない。CLI flag / 出力テキスト / メトリクス名 / 内部 WAL
+  segment 形式は実装詳細であり semver minor で変わりうる (WAL は flush 後に
+  消えるので永続フォーマットではない)。
+
+### 検証
+
+凍結の実効性は proptest の roundtrip (records → chunk → body+sidecars →
+decode → records) と、旧バイト列を直接 decode する golden/legacy テスト
+(manifest legacy decode、S4LT v1 decode 等) で担保する。1.x の間、これらの
+golden 入力は変更しない。

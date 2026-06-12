@@ -1,0 +1,39 @@
+--- crates/s4logs-core/src/read.rs
++++ replace frames_overlapping -> Result<Vec<FrameSpan>, ReadError> with Ok(vec![])
+@@ -46,35 +46,17 @@
+ }
+ 
+ /// Frames whose S4LT timestamp range overlaps `range`, in object order.
+ pub fn frames_overlapping(
+     frame_index: &FrameIndex,
+     ts_index: &TsIndex,
+     range: &TimeRange,
+ ) -> Result<Vec<FrameSpan>, ReadError> {
+-    if frame_index.entries.len() != ts_index.entries.len() {
+-        return Err(ReadError::IndexMismatch {
+-            frames: frame_index.entries.len(),
+-            ts_frames: ts_index.entries.len(),
+-        });
+-    }
+-    Ok(frame_index
+-        .entries
+-        .iter()
+-        .zip(ts_index.entries.iter())
+-        .enumerate()
+-        .filter(|(_, (_, ts))| range.overlaps(ts.min_ts, ts.max_ts))
+-        .map(|(i, (fe, _))| FrameSpan {
+-            frame_idx: i,
+-            byte_start: fe.compressed_offset,
+-            byte_end_exclusive: fe.compressed_end(),
+-            original_size: fe.original_size,
+-        })
+-        .collect())
++    Ok(vec![]) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Merge spans whose gap is ≤ `max_gap_bytes` into fewer Range GETs.
+ /// Input must be in object order (as produced by [`frames_overlapping`]).
+ /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.
+ pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {
+     let mut out: Vec<(u64, u64, u64)> = Vec::new();
+     for s in spans {

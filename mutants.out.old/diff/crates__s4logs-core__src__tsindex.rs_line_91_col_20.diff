@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/tsindex.rs
++++ replace != with == in decode_ts_index
+@@ -83,17 +83,17 @@
+     if version != TS_INDEX_VERSION {
+         return Err(TsIndexError::UnsupportedVersion(version));
+     }
+     let n = input.get_u64_le();
+     if n > MAX_FRAMES {
+         return Err(TsIndexError::TooManyFrames { got: n });
+     }
+     let expected_remaining = (n as usize).saturating_mul(TS_ENTRY_BYTES);
+-    if input.len() != expected_remaining {
++    if input.len() == /* ~ changed by cargo-mutants ~ */ expected_remaining {
+         return Err(TsIndexError::EntryCountMismatch {
+             claimed: n,
+             remaining: input.len(),
+         });
+     }
+     // Same bootstrap-capacity discipline as s4-codec `decode_index`: never
+     // pre-allocate more than a sane bound off an attacker-supplied count.
+     const BOOTSTRAP_ENTRIES: usize = 4096;

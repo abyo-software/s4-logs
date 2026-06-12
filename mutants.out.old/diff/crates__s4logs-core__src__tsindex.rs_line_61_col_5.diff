@@ -1,0 +1,29 @@
+--- crates/s4logs-core/src/tsindex.rs
++++ replace encode_ts_index -> Bytes with Default::default()
+@@ -53,25 +53,17 @@
+     InvalidEntry {
+         idx: usize,
+         min_ts: i64,
+         max_ts: i64,
+     },
+ }
+ 
+ pub fn encode_ts_index(idx: &TsIndex) -> Bytes {
+-    let mut buf = BytesMut::with_capacity(TS_HEADER_BYTES + idx.entries.len() * TS_ENTRY_BYTES);
+-    buf.put_slice(TS_INDEX_MAGIC);
+-    buf.put_u32_le(TS_INDEX_VERSION);
+-    buf.put_u64_le(idx.entries.len() as u64);
+-    for e in &idx.entries {
+-        buf.put_i64_le(e.min_ts);
+-        buf.put_i64_le(e.max_ts);
+-    }
+-    buf.freeze()
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ pub fn decode_ts_index(mut input: Bytes) -> Result<TsIndex, TsIndexError> {
+     if input.len() < TS_HEADER_BYTES {
+         return Err(TsIndexError::TooShort(input.len()));
+     }
+     let mut magic = [0u8; 4];
+     magic.copy_from_slice(&input[..4]);

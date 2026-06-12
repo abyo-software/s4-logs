@@ -10,6 +10,10 @@
 //!
 //! S4IX itself is reused verbatim from s4-codec; S4LT deliberately lives in
 //! a separate file so the S4IX format stays byte-identical to S4 proper.
+//!
+//! **Stability**: the S4LT v1 byte layout is frozen for the 1.x series
+//! (DESIGN.md §14). A future version must add a `version` arm that keeps the
+//! v1 decode path, never repurpose v1 bytes.
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use thiserror::Error;

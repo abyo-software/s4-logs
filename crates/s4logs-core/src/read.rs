@@ -289,6 +289,67 @@ mod tests {
     }
 
     #[test]
+    fn overlaps_boundary_is_half_open() {
+        // Range [100, 200): a frame is in-range iff its span touches
+        // [100, 200). These exact-boundary cases pin the `<` / `>=` operators
+        // (a time-pruning off-by-one would make grep silently miss or
+        // double-count edge records). Found by mutation testing.
+        let r = TimeRange {
+            from_ms: 100,
+            to_ms_exclusive: 200,
+        };
+        // frame entirely before: max_ts == from_ms-1 → no
+        assert!(!r.overlaps(0, 99));
+        // frame whose max_ts == from_ms → yes (>= boundary)
+        assert!(r.overlaps(50, 100));
+        // frame whose min_ts == to_ms_exclusive → no (< boundary, exclusive)
+        assert!(!r.overlaps(200, 300));
+        // frame whose min_ts == to_ms_exclusive-1 → yes
+        assert!(r.overlaps(199, 250));
+    }
+
+    #[test]
+    fn coalesce_gap_threshold_is_inclusive() {
+        // A gap exactly == max_gap_bytes merges; gap+1 does not. Pins the
+        // `<=` guard in coalesce_spans (mutation testing flagged it).
+        let spans = vec![
+            FrameSpan {
+                frame_idx: 0,
+                byte_start: 0,
+                byte_end_exclusive: 10,
+                original_size: 5,
+            },
+            FrameSpan {
+                frame_idx: 1,
+                byte_start: 18, // gap of 8 from end=10
+                byte_end_exclusive: 30,
+                original_size: 7,
+            },
+        ];
+        assert_eq!(coalesce_spans(&spans, 8).len(), 1, "gap == max merges");
+        assert_eq!(coalesce_spans(&spans, 7).len(), 2, "gap > max stays split");
+    }
+
+    #[test]
+    fn decompress_cap_boundary_rejects_at_exactly_cap() {
+        // When decoding fills the output to exactly `expected_original + slack`
+        // (the `take` ceiling), it must be a Bomb — not fall through to
+        // SizeMismatch. The whole multi-frame body decodes to ~thousands of
+        // bytes; claiming `100` sets cap = 100 + 1024 = 1124 < that, so the
+        // decoder truncates at exactly cap and `out.len() == cap` must trip
+        // the `>=` Bomb check. Pins `>=` against a `>` mutant, which would
+        // instead yield SizeMismatch. (Found by mutation testing.)
+        let chunk = chunk_with_frames();
+        let claim = 100u64;
+        assert!(
+            chunk.uncompressed_bytes > claim + BOMB_SLACK_BYTES,
+            "test needs the body to exceed the cap"
+        );
+        let err = decompress_frames(&chunk.body, claim).unwrap_err();
+        assert!(matches!(err, ReadError::Bomb { .. }), "got {err:?}");
+    }
+
+    #[test]
     fn coalesce_merges_adjacent_frames() {
         let chunk = chunk_with_frames();
         let range = TimeRange {

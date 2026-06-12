@@ -1,0 +1,97 @@
+crates/s4logs-core/src/chunk.rs:117:9: replace ChunkWriter::push -> Result<(), ChunkError> with Ok(())
+crates/s4logs-core/src/chunk.rs:120:30: replace += with -= in ChunkWriter::push
+crates/s4logs-core/src/chunk.rs:120:30: replace += with *= in ChunkWriter::push
+crates/s4logs-core/src/chunk.rs:121:31: replace >= with < in ChunkWriter::push
+crates/s4logs-core/src/chunk.rs:128:9: replace ChunkWriter::cut_frame -> Result<(), ChunkError> with Ok(())
+crates/s4logs-core/src/chunk.rs:142:27: replace += with -= in ChunkWriter::cut_frame
+crates/s4logs-core/src/chunk.rs:142:27: replace += with *= in ChunkWriter::cut_frame
+crates/s4logs-core/src/chunk.rs:144:27: replace += with -= in ChunkWriter::cut_frame
+crates/s4logs-core/src/chunk.rs:156:9: replace ChunkWriter::finish -> Result<Option<EncodedChunk>, ChunkError> with Ok(None)
+crates/s4logs-core/src/chunk.rs:144:27: replace += with *= in ChunkWriter::cut_frame
+crates/s4logs-core/src/chunk.rs:165:9: replace ChunkWriter::encode -> Result<Option<EncodedChunk>, ChunkError> with Ok(None)
+crates/s4logs-core/src/chunk.rs:172:12: delete ! in ChunkWriter::encode
+crates/s4logs-core/src/chunk.rs:184:26: replace += with -= in ChunkWriter::encode
+crates/s4logs-core/src/chunk.rs:184:26: replace += with *= in ChunkWriter::encode
+crates/s4logs-core/src/chunk.rs:186:26: replace += with *= in ChunkWriter::encode
+crates/s4logs-core/src/chunk.rs:186:26: replace += with -= in ChunkWriter::encode
+crates/s4logs-core/src/chunk.rs:218:5: replace compress_frame -> std::io::Result<Vec<u8>> with Ok(vec![])
+crates/s4logs-core/src/chunk.rs:218:5: replace compress_frame -> std::io::Result<Vec<u8>> with Ok(vec![0])
+crates/s4logs-core/src/read.rs:21:9: replace TimeRange::overlaps -> bool with true
+crates/s4logs-core/src/chunk.rs:218:5: replace compress_frame -> std::io::Result<Vec<u8>> with Ok(vec![1])
+crates/s4logs-core/src/read.rs:21:9: replace TimeRange::overlaps -> bool with false
+crates/s4logs-core/src/read.rs:21:39: replace && with || in TimeRange::overlaps
+crates/s4logs-core/src/read.rs:21:16: replace < with == in TimeRange::overlaps
+crates/s4logs-core/src/read.rs:21:16: replace < with > in TimeRange::overlaps
+crates/s4logs-core/src/read.rs:21:49: replace >= with < in TimeRange::overlaps
+crates/s4logs-core/src/read.rs:54:5: replace frames_overlapping -> Result<Vec<FrameSpan>, ReadError> with Ok(vec![])
+crates/s4logs-core/src/read.rs:54:34: replace != with == in frames_overlapping
+crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![]
+crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(0, 0, 0)]
+crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(0, 0, 1)]
+crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(0, 1, 1)]
+crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(0, 1, 0)]
+crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(1, 0, 0)]
+crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(1, 0, 1)]
+crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(1, 1, 0)]
+crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(1, 1, 1)]
+crates/s4logs-core/src/read.rs:82:37: replace match guard s.byte_start.saturating_sub(*end) <= max_gap_bytes with false in coalesce_spans
+crates/s4logs-core/src/read.rs:82:71: replace <= with > in coalesce_spans
+crates/s4logs-core/src/read.rs:84:23: replace += with -= in coalesce_spans
+crates/s4logs-core/src/read.rs:84:23: replace += with *= in coalesce_spans
+crates/s4logs-core/src/read.rs:99:44: replace << with >>
+crates/s4logs-core/src/read.rs:112:5: replace decompress_frames -> Result<Vec<u8>, ReadError> with Ok(vec![])
+crates/s4logs-core/src/read.rs:112:5: replace decompress_frames -> Result<Vec<u8>, ReadError> with Ok(vec![0])
+crates/s4logs-core/src/read.rs:112:5: replace decompress_frames -> Result<Vec<u8>, ReadError> with Ok(vec![1])
+crates/s4logs-core/src/read.rs:112:26: replace > with == in decompress_frames
+crates/s4logs-core/src/read.rs:112:26: replace > with < in decompress_frames
+crates/s4logs-core/src/read.rs:125:25: replace != with == in decompress_frames
+crates/s4logs-core/src/read.rs:154:9: replace <impl Iterator for RecordLines<'_>>::next -> Option<Self::Item> with None
+crates/s4logs-core/src/read.rs:158:71: replace == with != in <impl Iterator for RecordLines<'_>>::next
+crates/s4logs-core/src/read.rs:163:16: delete ! in <impl Iterator for RecordLines<'_>>::next
+crates/s4logs-core/src/tsindex.rs:19:42: replace + with -
+crates/s4logs-core/src/tsindex.rs:19:42: replace + with *
+crates/s4logs-core/src/tsindex.rs:19:38: replace + with *
+crates/s4logs-core/src/tsindex.rs:20:37: replace + with -
+crates/s4logs-core/src/tsindex.rs:20:37: replace + with *
+crates/s4logs-core/src/tsindex.rs:23:39: replace * with /
+crates/s4logs-core/src/tsindex.rs:23:32: replace * with /
+crates/s4logs-core/src/tsindex.rs:61:5: replace encode_ts_index -> Bytes with Default::default()
+crates/s4logs-core/src/tsindex.rs:73:5: replace decode_ts_index -> Result<TsIndex, TsIndexError> with Ok(Default::default())
+crates/s4logs-core/src/tsindex.rs:73:20: replace < with == in decode_ts_index
+crates/s4logs-core/src/tsindex.rs:73:20: replace < with > in decode_ts_index
+crates/s4logs-core/src/tsindex.rs:73:20: replace < with <= in decode_ts_index
+crates/s4logs-core/src/tsindex.rs:78:15: replace != with == in decode_ts_index
+crates/s4logs-core/src/tsindex.rs:83:16: replace != with == in decode_ts_index
+crates/s4logs-core/src/tsindex.rs:87:10: replace > with == in decode_ts_index
+crates/s4logs-core/src/tsindex.rs:87:10: replace > with < in decode_ts_index
+crates/s4logs-core/src/tsindex.rs:91:20: replace != with == in decode_ts_index
+crates/s4logs-core/src/tsindex.rs:104:19: replace > with == in decode_ts_index
+crates/s4logs-core/src/tsindex.rs:104:19: replace > with < in decode_ts_index
+crates/s4logs-core/src/tsindex.rs:104:19: replace > with >= in decode_ts_index
+crates/s4logs-drain/src/manifest.rs:113:9: replace Manifest::to_json_bytes -> Result<Bytes, ManifestError> with Ok(Default::default())
+crates/s4logs-drain/src/manifest.rs:140:5: replace manifest_covers_window -> bool with true
+crates/s4logs-drain/src/manifest.rs:121:22: replace != with == in Manifest::from_json_bytes
+crates/s4logs-drain/src/manifest.rs:140:5: replace manifest_covers_window -> bool with false
+crates/s4logs-drain/src/manifest.rs:145:17: replace && with || in manifest_covers_window
+crates/s4logs-drain/src/manifest.rs:143:17: replace && with || in manifest_covers_window
+crates/s4logs-drain/src/manifest.rs:144:17: replace && with || in manifest_covers_window
+crates/s4logs-drain/src/manifest.rs:142:23: replace == with != in manifest_covers_window
+crates/s4logs-drain/src/manifest.rs:143:32: replace == with != in manifest_covers_window
+crates/s4logs-drain/src/manifest.rs:144:38: replace == with != in manifest_covers_window
+crates/s4logs-drain/src/manifest.rs:145:36: replace == with != in manifest_covers_window
+crates/s4logs-drain/src/manifest.rs:155:5: replace parse_manifest_key_window -> Option<Window> with None
+crates/s4logs-drain/src/manifest.rs:218:9: replace MemoryManifestStore::is_empty -> bool with false
+crates/s4logs-drain/src/manifest.rs:228:9: replace <impl ManifestStore for MemoryManifestStore>::exists -> Result<bool, ManifestError> with Ok(true)
+crates/s4logs-drain/src/manifest.rs:228:9: replace <impl ManifestStore for MemoryManifestStore>::exists -> Result<bool, ManifestError> with Ok(false)
+crates/s4logs-drain/src/manifest.rs:236:9: replace <impl ManifestStore for MemoryManifestStore>::get -> Result<Option<Bytes>, ManifestError> with Ok(None)
+crates/s4logs-drain/src/manifest.rs:236:9: replace <impl ManifestStore for MemoryManifestStore>::get -> Result<Option<Bytes>, ManifestError> with Ok(Some(Default::default()))
+crates/s4logs-drain/src/manifest.rs:245:9: replace <impl ManifestStore for MemoryManifestStore>::put -> Result<(), ManifestError> with Ok(())
+crates/s4logs-drain/src/manifest.rs:253:9: replace <impl ManifestStore for MemoryManifestStore>::list -> Result<Vec<String>, ManifestError> with Ok(vec![])
+crates/s4logs-drain/src/manifest.rs:253:9: replace <impl ManifestStore for MemoryManifestStore>::list -> Result<Vec<String>, ManifestError> with Ok(vec!["xyzzy".into()])
+crates/s4logs-drain/src/manifest.rs:253:9: replace <impl ManifestStore for MemoryManifestStore>::list -> Result<Vec<String>, ManifestError> with Ok(vec![String::new()])
+crates/s4logs-drain/src/retention.rs:54:9: replace RetentionPlan::allowed -> bool with true
+crates/s4logs-drain/src/retention.rs:54:9: replace RetentionPlan::allowed -> bool with false
+crates/s4logs-drain/src/retention.rs:64:27: replace <= with > in plan_retention
+crates/s4logs-drain/src/retention.rs:73:41: replace <= with > in plan_retention
+crates/s4logs-drain/src/retention.rs:100:12: delete ! in plan_retention
+crates/s4logs-drain/src/retention.rs:125:8: delete ! in enforce_retention

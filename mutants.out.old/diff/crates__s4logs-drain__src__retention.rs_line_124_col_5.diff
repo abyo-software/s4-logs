@@ -1,0 +1,41 @@
+--- crates/s4logs-drain/src/retention.rs
++++ replace enforce_retention -> Result<RetentionPlan, DrainError> with Ok(Default::default())
+@@ -116,37 +116,17 @@
+ /// On a coverage gap nothing is called regardless of `apply` (fail-closed).
+ pub async fn enforce_retention(
+     cw: &dyn CwSource,
+     manifests: &dyn ManifestStore,
+     key_prefix: &str,
+     req: &RetentionRequest,
+     apply: bool,
+ ) -> Result<RetentionPlan, DrainError> {
+-    let mut plan = plan_retention(manifests, key_prefix, req).await?;
+-    if !plan.allowed() {
+-        tracing::warn!(
+-            log_group = %req.log_group,
+-            missing = plan.missing_windows.len(),
+-            required = plan.required_windows.len(),
+-            "retention gate refused: coverage gap (fail-closed, nothing changed)"
+-        );
+-        return Ok(plan);
+-    }
+-    if apply {
+-        cw.put_retention_policy(&req.log_group, req.retention_days)
+-            .await?;
+-        plan.applied = true;
+-        tracing::info!(
+-            log_group = %req.log_group,
+-            retention_days = req.retention_days,
+-            "retention policy applied"
+-        );
+-    }
+-    Ok(plan)
++    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[cfg(test)]
+ #[allow(clippy::unwrap_used)]
+ mod tests {
+     use super::*;
+     use crate::manifest::MemoryManifestStore;
+     use crate::testutil::MockCw;

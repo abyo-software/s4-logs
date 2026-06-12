@@ -1,0 +1,10 @@
+crates/s4logs-core/src/chunk.rs:156:9: replace ChunkWriter::finish -> Result<Option<EncodedChunk>, ChunkError> with Ok(Some(Default::default()))
+crates/s4logs-core/src/chunk.rs:165:9: replace ChunkWriter::encode -> Result<Option<EncodedChunk>, ChunkError> with Ok(Some(Default::default()))
+crates/s4logs-core/src/read.rs:54:5: replace frames_overlapping -> Result<Vec<FrameSpan>, ReadError> with Ok(vec![Default::default()])
+crates/s4logs-core/src/read.rs:122:25: replace >= with < in decompress_frames
+crates/s4logs-core/src/read.rs:154:9: replace <impl Iterator for RecordLines<'_>>::next -> Option<Self::Item> with Some(Default::default())
+crates/s4logs-drain/src/manifest.rs:120:9: replace Manifest::from_json_bytes -> Result<Self, ManifestError> with Ok(Default::default())
+crates/s4logs-drain/src/manifest.rs:155:5: replace parse_manifest_key_window -> Option<Window> with Some(Default::default())
+crates/s4logs-drain/src/manifest.rs:281:5: replace storage_err -> ManifestError with Default::default()
+crates/s4logs-drain/src/retention.rs:64:5: replace plan_retention -> Result<RetentionPlan, DrainError> with Ok(Default::default())
+crates/s4logs-drain/src/retention.rs:124:5: replace enforce_retention -> Result<RetentionPlan, DrainError> with Ok(Default::default())

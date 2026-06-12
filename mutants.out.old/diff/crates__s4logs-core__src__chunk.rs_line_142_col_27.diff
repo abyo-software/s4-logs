@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/chunk.rs
++++ replace += with -= in ChunkWriter::cut_frame
+@@ -134,17 +134,17 @@
+             original_size: self.pending.len() as u64,
+             compressed_offset: self.body.len() as u64,
+             compressed_size: compressed.len() as u64,
+         });
+         self.ts_entries.push(TsEntry {
+             min_ts: self.pending_min_ts,
+             max_ts: self.pending_max_ts,
+         });
+-        self.original_off += self.pending.len() as u64;
++        self.original_off -= /* ~ changed by cargo-mutants ~ */ self.pending.len() as u64;
+         self.body.extend_from_slice(&compressed);
+         self.record_count += self.pending_records;
+         self.min_ts = self.min_ts.min(self.pending_min_ts);
+         self.max_ts = self.max_ts.max(self.pending_max_ts);
+         self.pending.clear();
+         self.pending_min_ts = i64::MAX;
+         self.pending_max_ts = i64::MIN;
+         self.pending_records = 0;

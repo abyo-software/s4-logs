@@ -1,0 +1,21 @@
+--- crates/s4logs-drain/src/retention.rs
++++ replace RetentionPlan::allowed -> bool with false
+@@ -46,17 +46,17 @@
+     /// Required windows with no manifest — must be empty to proceed.
+     pub missing_windows: Vec<Window>,
+     pub applied: bool,
+ }
+ 
+ impl RetentionPlan {
+     /// Fail-closed verdict: true only when every required window is covered.
+     pub fn allowed(&self) -> bool {
+-        self.missing_windows.is_empty()
++        false /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ /// Compute coverage without touching CloudWatch (report-only path).
+ pub async fn plan_retention(
+     manifests: &dyn ManifestStore,
+     key_prefix: &str,
+     req: &RetentionRequest,

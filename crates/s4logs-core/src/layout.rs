@@ -1,4 +1,5 @@
-//! S3 key layout (DESIGN.md §3).
+//! S3 key layout (DESIGN.md §3). Frozen for the 1.x series (DESIGN.md §14) —
+//! external Athena/Glue table definitions depend on the partition scheme.
 //!
 //! ```text
 //! {prefix}data/account={acct}/loggroup={g}/dt={YYYY-MM-DD}/{name}.jsonl.zst

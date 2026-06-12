@@ -46,3 +46,14 @@ jobs:
           name: proptest-regressions-${{ github.run_id }}
           path: "**/*.proptest-regressions"
           if-no-files-found: ignore
+
+  audit:
+    name: supply-chain (deny + audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # cargo-deny is the gate: advisories (with the documented rustls-webpki
+      # 0.101.7 ignores in deny.toml), licenses, banned crates, and sources.
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check advisories licenses bans sources

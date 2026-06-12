@@ -1,0 +1,21 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace == with != in manifest_covers_window
+@@ -134,17 +134,17 @@
+     bytes: &[u8],
+     account: &str,
+     log_group: &str,
+     window_start_ms: i64,
+     window_end_ms: i64,
+ ) -> bool {
+     match Manifest::from_json_bytes(bytes) {
+         Ok(m) => {
+-            m.account == account
++            m.account != /* ~ changed by cargo-mutants ~ */ account
+                 && m.log_group == log_group
+                 && m.window_start_ms == window_start_ms
+                 && m.window_end_ms == window_end_ms
+         }
+         Err(_) => false,
+     }
+ }
+ 

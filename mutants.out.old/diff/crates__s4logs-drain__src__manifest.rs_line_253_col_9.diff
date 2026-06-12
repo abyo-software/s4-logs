@@ -1,0 +1,28 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace <impl ManifestStore for MemoryManifestStore>::list -> Result<Vec<String>, ManifestError> with Ok(vec![])
+@@ -245,24 +245,17 @@
+         self.objects
+             .lock()
+             .unwrap_or_else(|e| e.into_inner())
+             .insert(key.to_owned(), body);
+         Ok(())
+     }
+ 
+     async fn list(&self, prefix: &str) -> Result<Vec<String>, ManifestError> {
+-        Ok(self
+-            .objects
+-            .lock()
+-            .unwrap_or_else(|e| e.into_inner())
+-            .range(prefix.to_owned()..)
+-            .take_while(|(k, _)| k.starts_with(prefix))
+-            .map(|(k, _)| k.clone())
+-            .collect())
++        Ok(vec![]) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ /// Thin [`ManifestStore`] adapter over the S3 `ObjectStore`.
+ ///
+ /// COMPILE-ONLY in wave 1B: `ObjectStore`'s S3 calls are implemented by
+ /// wave 1A and integration-tested by wave 2E. Do not add tests here that
+ /// would hit the underlying client.

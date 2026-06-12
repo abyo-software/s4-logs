@@ -1,0 +1,38 @@
+crates/s4logs-core/src/chunk.rs:103:9: replace ChunkWriter::is_empty -> bool with true
+crates/s4logs-core/src/chunk.rs:103:56: replace == with != in ChunkWriter::is_empty
+crates/s4logs-core/src/chunk.rs:109:9: replace ChunkWriter::uncompressed_len -> u64 with 0
+crates/s4logs-core/src/chunk.rs:109:9: replace ChunkWriter::uncompressed_len -> u64 with 1
+crates/s4logs-core/src/chunk.rs:109:27: replace + with - in ChunkWriter::uncompressed_len
+crates/s4logs-core/src/chunk.rs:109:27: replace + with * in ChunkWriter::uncompressed_len
+crates/s4logs-core/src/chunk.rs:113:9: replace ChunkWriter::record_count -> u64 with 0
+crates/s4logs-core/src/chunk.rs:113:9: replace ChunkWriter::record_count -> u64 with 1
+crates/s4logs-core/src/chunk.rs:113:27: replace + with - in ChunkWriter::record_count
+crates/s4logs-core/src/chunk.rs:113:27: replace + with * in ChunkWriter::record_count
+crates/s4logs-core/src/chunk.rs:103:27: replace == with != in ChunkWriter::is_empty
+crates/s4logs-core/src/chunk.rs:103:32: replace && with || in ChunkWriter::is_empty
+crates/s4logs-core/src/chunk.rs:103:9: replace ChunkWriter::is_empty -> bool with false
+crates/s4logs-core/src/read.rs:21:16: replace < with <= in TimeRange::overlaps
+crates/s4logs-core/src/read.rs:82:37: replace match guard s.byte_start.saturating_sub(*end) <= max_gap_bytes with true in coalesce_spans
+crates/s4logs-core/src/read.rs:95:37: replace << with >>
+crates/s4logs-core/src/read.rs:112:26: replace > with >= in decompress_frames
+crates/s4logs-core/src/tsindex.rs:19:38: replace + with -
+crates/s4logs-core/src/tsindex.rs:23:39: replace * with +
+crates/s4logs-core/src/tsindex.rs:23:32: replace * with +
+crates/s4logs-core/src/tsindex.rs:87:10: replace > with >= in decode_ts_index
+crates/s4logs-drain/src/manifest.rs:169:5: replace manifest_account_prefix -> String with String::new()
+crates/s4logs-drain/src/manifest.rs:169:5: replace manifest_account_prefix -> String with "xyzzy".into()
+crates/s4logs-drain/src/manifest.rs:180:5: replace parse_manifest_key_log_group -> Option<String> with None
+crates/s4logs-drain/src/manifest.rs:180:5: replace parse_manifest_key_log_group -> Option<String> with Some(String::new())
+crates/s4logs-drain/src/manifest.rs:180:5: replace parse_manifest_key_log_group -> Option<String> with Some("xyzzy".into())
+crates/s4logs-drain/src/manifest.rs:209:9: replace MemoryManifestStore::keys -> Vec<String> with vec![]
+crates/s4logs-drain/src/manifest.rs:209:9: replace MemoryManifestStore::keys -> Vec<String> with vec![String::new()]
+crates/s4logs-drain/src/manifest.rs:209:9: replace MemoryManifestStore::keys -> Vec<String> with vec!["xyzzy".into()]
+crates/s4logs-drain/src/manifest.rs:218:9: replace MemoryManifestStore::is_empty -> bool with true
+crates/s4logs-drain/src/manifest.rs:291:9: replace <impl ManifestStore for ObjectStoreManifestStore>::exists -> Result<bool, ManifestError> with Ok(true)
+crates/s4logs-drain/src/manifest.rs:291:9: replace <impl ManifestStore for ObjectStoreManifestStore>::exists -> Result<bool, ManifestError> with Ok(false)
+crates/s4logs-drain/src/manifest.rs:298:9: replace <impl ManifestStore for ObjectStoreManifestStore>::get -> Result<Option<Bytes>, ManifestError> with Ok(None)
+crates/s4logs-drain/src/manifest.rs:306:9: replace <impl ManifestStore for ObjectStoreManifestStore>::put -> Result<(), ManifestError> with Ok(())
+crates/s4logs-drain/src/manifest.rs:314:9: replace <impl ManifestStore for ObjectStoreManifestStore>::list -> Result<Vec<String>, ManifestError> with Ok(vec![String::new()])
+crates/s4logs-drain/src/manifest.rs:314:9: replace <impl ManifestStore for ObjectStoreManifestStore>::list -> Result<Vec<String>, ManifestError> with Ok(vec!["xyzzy".into()])
+crates/s4logs-drain/src/manifest.rs:298:9: replace <impl ManifestStore for ObjectStoreManifestStore>::get -> Result<Option<Bytes>, ManifestError> with Ok(Some(Default::default()))
+crates/s4logs-drain/src/manifest.rs:314:9: replace <impl ManifestStore for ObjectStoreManifestStore>::list -> Result<Vec<String>, ManifestError> with Ok(vec![])

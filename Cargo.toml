@@ -26,6 +26,10 @@ categories = ["compression", "command-line-utilities"]
 # §4). Pinned to the v1.0.0 tag: the S4IX format is frozen for 1.x.
 s4-codec = { git = "https://github.com/abyo-software/s4", tag = "v1.0.0" }
 
+# NOTE: the AWS SDK crates pull a legacy rustls 0.21 / rustls-webpki 0.101.7
+# connector that is compiled but never the active HTTPS client (we use the
+# modern rustls-aws-lc / rustls 0.23 default). Dropping it breaks aws-runtime's
+# build, so the resulting advisories are documented + ignored in `deny.toml`.
 aws-config = { version = "1", features = ["behavior-version-latest"] }
 aws-sdk-s3 = "1"
 aws-sdk-cloudwatch = "1"

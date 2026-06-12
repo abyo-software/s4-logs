@@ -1,5 +1,6 @@
 //! On-disk JSONL record schema (DESIGN.md §2). Field names are part of the
-//! format — they become Athena column names. Do not rename.
+//! format — they become Athena column names. Do not rename. Frozen for the
+//! 1.x series (DESIGN.md §14); new fields may only be added as optional.
 
 use serde::{Deserialize, Serialize};
 

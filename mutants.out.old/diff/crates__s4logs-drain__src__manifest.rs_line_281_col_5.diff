@@ -1,0 +1,25 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace storage_err -> ManifestError with Default::default()
+@@ -273,21 +273,17 @@
+ 
+ impl ObjectStoreManifestStore {
+     pub fn new(store: ObjectStore) -> Self {
+         Self { store }
+     }
+ }
+ 
+ fn storage_err(op: &'static str, key: &str, e: StoreError) -> ManifestError {
+-    ManifestError::Storage {
+-        op,
+-        key: key.to_owned(),
+-        message: e.to_string(),
+-    }
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[async_trait]
+ impl ManifestStore for ObjectStoreManifestStore {
+     async fn exists(&self, key: &str) -> Result<bool, ManifestError> {
+         self.store
+             .exists(key)
+             .await

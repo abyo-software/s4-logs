@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/tsindex.rs
++++ replace > with >= in decode_ts_index
+@@ -79,17 +79,17 @@
+         return Err(TsIndexError::BadMagic { got: magic });
+     }
+     input.advance(4);
+     let version = input.get_u32_le();
+     if version != TS_INDEX_VERSION {
+         return Err(TsIndexError::UnsupportedVersion(version));
+     }
+     let n = input.get_u64_le();
+-    if n > MAX_FRAMES {
++    if n >= /* ~ changed by cargo-mutants ~ */ MAX_FRAMES {
+         return Err(TsIndexError::TooManyFrames { got: n });
+     }
+     let expected_remaining = (n as usize).saturating_mul(TS_ENTRY_BYTES);
+     if input.len() != expected_remaining {
+         return Err(TsIndexError::EntryCountMismatch {
+             claimed: n,
+             remaining: input.len(),
+         });

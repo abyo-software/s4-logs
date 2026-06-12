@@ -1,0 +1,25 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace <impl ManifestStore for MemoryManifestStore>::exists -> Result<bool, ManifestError> with Ok(false)
+@@ -220,21 +220,17 @@
+             .unwrap_or_else(|e| e.into_inner())
+             .is_empty()
+     }
+ }
+ 
+ #[async_trait]
+ impl ManifestStore for MemoryManifestStore {
+     async fn exists(&self, key: &str) -> Result<bool, ManifestError> {
+-        Ok(self
+-            .objects
+-            .lock()
+-            .unwrap_or_else(|e| e.into_inner())
+-            .contains_key(key))
++        Ok(false) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     async fn get(&self, key: &str) -> Result<Option<Bytes>, ManifestError> {
+         Ok(self
+             .objects
+             .lock()
+             .unwrap_or_else(|e| e.into_inner())
+             .get(key)

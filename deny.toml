@@ -1,0 +1,56 @@
+# cargo-deny configuration (advisories + licenses + bans).
+# Run: cargo deny check    (CI: ci.yml)
+
+[advisories]
+yanked = "deny"
+# The rustls-webpki 0.101.7 advisories below come from the AWS SDK crates'
+# default `rustls` feature, which pulls aws-smithy-http-client's
+# `legacy-rustls-ring` connector (rustls 0.21 → rustls-webpki 0.101.7).
+#
+# Why ignored rather than fixed:
+#   - The ACTIVE HTTPS client S4 Logs uses is the modern `default-https-client`
+#     (rustls-aws-lc → rustls 0.23 → rustls-webpki 0.103.13, which is patched).
+#     The legacy connector is compiled into the tree but is never constructed
+#     by our code — we only ever build the SDK's default clients.
+#   - All three advisories are in the certificate-chain / CRL validation path
+#     of webpki 0.101.7. Since no connector that uses 0.101.7 is instantiated,
+#     none of these paths execute at runtime.
+#   - Removing the legacy feature via `default-features = false` breaks
+#     aws-runtime's build (event-stream SigV4 signer type inference — an
+#     upstream feature-coupling bug), so we cannot cleanly drop it yet.
+#
+# Tracking: revisit when a newer aws-smithy-http-client stops pulling
+# `legacy-rustls-ring`, or when default-features surgery no longer breaks the
+# build, and remove these ignores. See SECURITY.md.
+ignore = [
+    "RUSTSEC-2026-0098", # rustls-webpki: name constraints wildcard accepted (legacy 0.101.7, inactive path)
+    "RUSTSEC-2026-0099", # rustls-webpki: URI name constraints accepted (legacy 0.101.7, inactive path)
+    "RUSTSEC-2026-0104", # rustls-webpki: reachable panic in CRL parsing (legacy 0.101.7, inactive path)
+]
+
+[licenses]
+# Apache-2.0 project; allow the permissive set the dependency tree actually
+# uses. BlueOak-1.0.0 (minicbor, via the AWS SDK) is a permissive,
+# OSI-equivalent model license.
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+    "BlueOak-1.0.0",
+]
+confidence-threshold = 0.9
+
+[bans]
+# Two rustls majors (0.21 legacy + 0.23 active) coexist via the AWS SDK; allow
+# the duplicate rather than fail the build on it (same root cause as the
+# advisory note above).
+multiple-versions = "allow"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "allow" # s4-codec is a pinned git dependency (tag v1.0.0)

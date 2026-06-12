@@ -1,0 +1,25 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace <impl ManifestStore for ObjectStoreManifestStore>::put -> Result<(), ManifestError> with Ok(())
+@@ -298,21 +298,17 @@
+         match self.store.get_bytes(key).await {
+             Ok(b) => Ok(Some(b)),
+             Err(StoreError::NotFound { .. }) => Ok(None),
+             Err(e) => Err(storage_err("get", key, e)),
+         }
+     }
+ 
+     async fn put(&self, key: &str, body: Bytes) -> Result<(), ManifestError> {
+-        self.store
+-            .put_bytes(key, body)
+-            .await
+-            .map(|_etag| ())
+-            .map_err(|e| storage_err("put", key, e))
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     async fn list(&self, prefix: &str) -> Result<Vec<String>, ManifestError> {
+         self.store
+             .list_keys(prefix)
+             .await
+             .map_err(|e| storage_err("list", prefix, e))
+     }

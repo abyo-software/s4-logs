@@ -1,0 +1,402 @@
+
+*** crates/s4logs-drain/src/retention.rs:64:5: replace plan_retention -> Result<RetentionPlan, DrainError> with Ok(Default::default())
+
+*** mutation diff:
+--- crates/s4logs-drain/src/retention.rs
++++ replace plan_retention -> Result<RetentionPlan, DrainError> with Ok(Default::default())
+@@ -56,64 +56,17 @@
+ }
+ 
+ /// Compute coverage without touching CloudWatch (report-only path).
+ pub async fn plan_retention(
+     manifests: &dyn ManifestStore,
+     key_prefix: &str,
+     req: &RetentionRequest,
+ ) -> Result<RetentionPlan, DrainError> {
+-    if req.retention_days <= 0 {
+-        return Err(DrainError::BadOptions(format!(
+-            "retention_days must be > 0, got {}",
+-            req.retention_days
+-        )));
+-    }
+-    let cutoff_ms = req
+-        .now_ms
+-        .saturating_sub(i64::from(req.retention_days).saturating_mul(DAY_MS));
+-    let required_windows = if cutoff_ms <= req.coverage_from_ms {
+-        // Nothing older than the cutoff can exist — trivially safe.
+-        Vec::new()
+-    } else {
+-        windows_covering(req.coverage_from_ms, cutoff_ms, req.window_ms)?
+-    };
+-    // This gate decides whether CloudWatch may DELETE logs, so a key merely
+-    // *existing* is not proof of coverage: a zero-byte, truncated,
+-    // wrong-version, or mismatched manifest object at the expected key would
+-    // otherwise green-light deletion of un-archived data. GET and validate
+-    // every required window's manifest; anything that does not decode into a
+-    // matching, complete manifest is treated as missing (fail-closed).
+-    let mut missing_windows: Vec<Window> = Vec::new();
+-    for w in &required_windows {
+-        let key = manifest_key(
+-            key_prefix,
+-            &req.account,
+-            &req.log_group,
+-            w.start_ms,
+-            w.end_ms,
+-        );
+-        let covered = match manifests.get(&key).await? {
+-            None => false,
+-            Some(bytes) => {
+-                manifest_covers_window(&bytes, &req.account, &req.log_group, w.start_ms, w.end_ms)
+-            }
+-        };
+-        if !covered {
+-            missing_windows.push(*w);
+-        }
+-    }
+-    Ok(RetentionPlan {
+-        log_group: req.log_group.clone(),
+-        retention_days: req.retention_days,
+-        cutoff_ms,
+-        required_windows,
+-        missing_windows,
+-        applied: false,
+-    })
++    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Plan, then — only if coverage is complete **and** `apply` is true — call
+ /// `PutRetentionPolicy`. With `apply = false` (default) this is report-only.
+ /// On a coverage gap nothing is called regardless of `apply` (fail-closed).
+ pub async fn enforce_retention(
+     cw: &dyn CwSource,
+     manifests: &dyn ManifestStore,
+
+
+*** /data/y1-misc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo test --no-run --verbose --package=s4logs-drain@0.4.3
+       Fresh unicode-ident v1.0.24
+       Fresh cfg-if v1.0.4
+       Fresh zeroize v1.8.2
+       Fresh smallvec v1.15.1
+       Fresh pin-project-lite v0.2.17
+       Fresh bytes v1.11.1
+       Fresh memchr v2.8.1
+       Fresh find-msvc-tools v0.1.9
+       Fresh once_cell v1.21.4
+       Fresh shlex v2.0.1
+       Fresh itoa v1.0.18
+       Fresh scopeguard v1.2.0
+       Fresh futures-core v0.3.32
+       Fresh futures-sink v0.3.32
+       Fresh fnv v1.0.7
+       Fresh typenum v1.20.1
+       Fresh autocfg v1.5.1
+       Fresh slab v0.4.12
+       Fresh futures-io v0.3.32
+       Fresh subtle v2.6.1
+       Fresh futures-task v0.3.32
+       Fresh version_check v0.9.5
+       Fresh stable_deref_trait v1.2.1
+       Fresh powerfmt v0.2.0
+       Fresh equivalent v1.0.2
+       Fresh num-conv v0.2.2
+       Fresh outref v0.5.2
+       Fresh either v1.16.0
+       Fresh libc v0.2.186
+       Fresh lock_api v0.4.14
+       Fresh tracing-core v0.1.36
+       Fresh futures-channel v0.3.32
+       Fresh http v1.4.2
+       Fresh http v0.2.12
+       Fresh deranged v0.5.8
+       Fresh const-oid v0.9.6
+       Fresh vsimd v0.8.0
+       Fresh time-core v0.1.8
+       Fresh bytes-utils v0.1.4
+       Fresh hashbrown v0.17.1
+       Fresh pin-utils v0.1.0
+       Fresh ryu v1.0.23
+       Fresh untrusted v0.9.0
+       Fresh fs_extra v1.3.0
+       Fresh dunce v1.0.5
+       Fresh litemap v0.8.2
+       Fresh writeable v0.6.3
+       Fresh percent-encoding v2.3.2
+       Fresh utf8_iter v1.0.4
+       Fresh proc-macro2 v1.0.106
+       Fresh jobserver v0.1.34
+       Fresh parking_lot_core v0.9.12
+       Fresh errno v0.3.14
+       Fresh mio v1.2.1
+       Fresh socket2 v0.6.4
+       Fresh http-body v1.0.1
+       Fresh getrandom v0.2.17
+       Fresh serde_core v1.0.228
+       Fresh http-body v0.4.6
+       Fresh base64-simd v0.8.0
+       Fresh time v0.3.47
+       Fresh base64ct v1.8.3
+       Fresh hybrid-array v0.4.12
+       Fresh log v0.4.32
+       Fresh try-lock v0.2.5
+       Fresh rustls-pki-types v1.14.1
+       Fresh tower-service v0.3.3
+       Fresh semver v1.0.28
+       Fresh cmov v0.5.4
+       Fresh form_urlencoded v1.2.2
+       Fresh const-oid v0.10.2
+       Fresh atomic-waker v1.1.2
+       Fresh quote v1.0.45
+       Fresh cc v1.2.63
+       Fresh signal-hook-registry v1.4.8
+       Fresh parking_lot v0.12.5
+       Fresh num-traits v0.2.19
+       Fresh generic-array v0.14.7
+       Fresh http-body-util v0.1.3
+       Fresh indexmap v2.14.0
+       Fresh rand_core v0.6.4
+       Fresh icu_normalizer_data v2.2.0
+       Fresh icu_properties_data v2.2.0
+       Fresh pem-rfc7468 v0.7.0
+       Fresh want v0.3.1
+       Fresh httparse v1.10.1
+       Fresh block-buffer v0.12.0
+       Fresh rustc_version v0.4.1
+       Fresh ctutils v0.4.2
+       Fresh crypto-common v0.2.2
+       Fresh xmlparser v0.13.6
+       Fresh ciborium-io v0.2.2
+       Fresh regex-syntax v0.8.11
+       Fresh minimal-lexical v0.2.1
+       Fresh base16ct v0.2.0
+       Fresh socket2 v0.5.10
+       Fresh aho-corasick v1.1.4
+       Fresh base64 v0.22.1
+       Fresh openssl-probe v0.2.1
+       Fresh syn v2.0.117
+       Fresh num-integer v0.1.46
+       Fresh cmake v0.1.58
+       Fresh crypto-common v0.1.7
+       Fresh block-buffer v0.10.4
+       Fresh der v0.7.10
+       Fresh zmij v1.0.21
+       Fresh crc32fast v1.5.0
+       Fresh ff v0.13.1
+       Fresh digest v0.11.3
+       Fresh crypto-bigint v0.5.5
+       Fresh chrono v0.4.45
+       Fresh nom v7.1.3
+       Fresh data-encoding v2.11.0
+       Fresh diff v0.1.13
+       Fresh separator v0.4.1
+       Fresh ipnet v2.12.0
+       Fresh yansi v1.0.1
+       Fresh uuid v1.23.3
+       Fresh httpdate v1.0.3
+       Fresh bs58 v0.5.1
+       Fresh roxmltree v0.14.1
+       Fresh rustls-native-certs v0.8.4
+       Fresh regex-automata v0.4.14
+       Fresh tower-layer v0.3.3
+       Fresh regex-lite v0.1.9
+       Fresh pkg-config v0.3.33
+       Fresh fastrand v2.4.1
+       Fresh cpufeatures v0.3.0
+       Fresh lazy_static v1.5.0
+       Fresh cpufeatures v0.2.17
+       Fresh tokio-macros v2.7.0
+       Fresh tracing-attributes v0.1.31
+       Fresh futures-macro v0.3.32
+       Fresh synstructure v0.13.2
+       Fresh zerovec-derive v0.11.3
+       Fresh displaydoc v0.2.6
+       Fresh aws-smithy-runtime-api-macros v1.0.0
+       Fresh zerocopy-derive v0.8.52
+       Fresh digest v0.10.7
+       Fresh serde_derive v1.0.228
+       Fresh spki v0.7.3
+       Fresh serde_json v1.0.150
+       Fresh thiserror-impl v2.0.18
+       Fresh num-bigint v0.4.6
+       Fresh group v0.13.0
+       Fresh pretty_assertions v1.4.1
+       Fresh tower v0.5.3
+       Fresh matchers v0.2.0
+       Fresh sha2 v0.11.0
+       Fresh sharded-slab v0.1.7
+       Fresh tracing-log v0.2.0
+       Fresh thread_local v1.1.9
+       Fresh hex v0.4.3
+       Fresh nu-ansi-term v0.50.3
+       Fresh hmac v0.13.0
+       Fresh tokio v1.52.3
+       Fresh tracing v0.1.44
+       Fresh futures-util v0.3.32
+       Fresh zerofrom-derive v0.1.7
+       Fresh yoke-derive v0.8.2
+       Fresh zerocopy v0.8.52
+       Fresh serde v1.0.228
+       Fresh ring v0.17.14
+       Fresh pkcs8 v0.10.2
+       Fresh num-rational v0.4.2
+       Fresh thiserror v2.0.18
+       Fresh hmac v0.12.1
+       Fresh signature v2.2.0
+       Fresh sha2 v0.10.9
+       Fresh spin v0.10.0
+       Fresh allocator-api2 v0.2.21
+       Fresh simd-adler32 v0.3.9
+       Fresh adler2 v2.0.1
+       Fresh foldhash v0.2.0
+       Fresh md-5 v0.11.0
+       Fresh sha1 v0.11.0
+       Fresh linux-raw-sys v0.12.1
+       Fresh tokio-util v0.7.18
+       Fresh zerofrom v0.1.8
+       Fresh aws-smithy-async v1.2.14
+       Fresh aws-lc-sys v0.41.0
+       Fresh half v2.7.1
+       Fresh sct v0.7.1
+       Fresh rustls-webpki v0.101.7
+       Fresh sec1 v0.7.3
+       Fresh assert-json-diff v2.0.2
+       Fresh rfc6979 v0.4.0
+       Fresh tracing-serde v0.2.0
+       Fresh zstd-sys v2.0.16+zstd.1.5.7
+       Fresh rustversion v1.0.22
+       Fresh getrandom v0.3.4
+       Fresh hashbrown v0.16.1
+       Fresh miniz_oxide v0.8.9
+       Fresh crc-fast v1.10.0
+       Fresh bitflags v2.13.0
+       Fresh crc32c v0.6.8
+       Fresh futures-executor v0.3.32
+       Fresh async-trait v0.1.89
+       Fresh aws-smithy-xml v0.60.15
+       Fresh ppv-lite86 v0.2.21
+       Fresh wait-timeout v0.2.1
+       Fresh bstr v1.12.1
+       Fresh quick-error v1.2.3
+       Fresh bit-vec v0.8.0
+       Fresh yoke v0.8.3
+       Fresh aws-smithy-types v1.4.9
+       Fresh aws-lc-rs v1.17.0
+       Fresh h2 v0.4.14
+       Fresh ciborium-ll v0.2.2
+       Fresh h2 v0.3.27
+       Fresh rustls v0.21.12
+       Fresh elliptic-curve v0.13.8
+       Fresh tracing-subscriber v0.3.23
+       Fresh rand_core v0.9.5
+       Fresh arc-swap v1.9.1
+       Fresh zstd-safe v7.2.4
+       Fresh getrandom v0.4.2
+       Fresh anyhow v1.0.102
+       Fresh rustix v1.1.4
+       Fresh flate2 v1.1.9
+       Fresh lru v0.16.4
+       Fresh futures v0.3.32
+       Fresh bit-set v0.8.0
+       Fresh globset v0.4.18
+       Fresh unarray v0.1.4
+       Fresh zerovec v0.11.6
+       Fresh aws-smithy-runtime-api v1.12.3
+       Fresh zerotrie v0.2.4
+       Fresh rustls-webpki v0.103.13
+       Fresh hyper v1.10.1
+       Fresh aws-smithy-eventstream v0.60.20
+       Fresh ciborium v0.2.2
+       Fresh hyper v0.14.32
+       Fresh tokio-rustls v0.24.1
+       Fresh primeorder v0.13.6
+       Fresh ecdsa v0.16.9
+       Fresh zstd v0.13.3
+       Fresh tempfile v3.27.0
+       Fresh rand_xorshift v0.4.0
+       Fresh rand v0.9.4
+       Fresh rand_chacha v0.9.0
+       Fresh tinystr v0.8.3
+       Fresh potential_utf v0.1.5
+       Fresh rustls v0.23.40
+       Fresh hyper-util v0.1.20
+       Fresh hyper-rustls v0.24.2
+       Fresh aws-smithy-http v0.63.6
+       Fresh aws-smithy-schema v0.1.0
+       Fresh aws-credential-types v1.2.14
+       Fresh aws-smithy-observability v0.2.6
+       Fresh p256 v0.13.2
+       Fresh s4-codec v1.0.0 (https://github.com/abyo-software/s4?tag=v1.0.0#af3c69b6)
+       Fresh rusty-fork v0.3.1
+       Fresh icu_locale_core v2.2.0
+       Fresh icu_collections v2.2.0
+       Fresh tokio-rustls v0.26.4
+       Fresh aws-types v1.3.16
+       Fresh aws-sigv4 v1.4.5
+       Fresh aws-smithy-json v0.62.7
+       Fresh aws-smithy-checksums v0.64.8
+       Fresh proptest v1.11.0
+       Fresh icu_provider v2.2.0
+       Fresh hyper-rustls v0.27.9
+       Fresh icu_normalizer v2.2.0
+       Fresh icu_properties v2.2.0
+       Fresh idna_adapter v1.2.2
+       Fresh idna v1.1.0
+       Fresh url v2.5.8
+       Fresh cbor-diag v0.1.12
+       Fresh aws-smithy-protocol-test v0.63.14
+       Fresh aws-smithy-http-client v1.1.13
+       Fresh aws-smithy-runtime v1.11.3
+       Fresh aws-smithy-mocks v0.2.6
+       Fresh aws-runtime v1.7.4
+       Fresh aws-sdk-s3 v1.135.0
+       Fresh aws-sdk-cloudwatchlogs v1.135.0
+       Fresh s4logs-core v0.4.3 (/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/crates/s4logs-core)
+       Dirty s4logs-drain v0.4.3 (/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/crates/s4logs-drain): the file `crates/s4logs-drain/src/retention.rs` has changed (1781244750.112522962s, 3s after last build at 1781244747.825487273s)
+   Compiling s4logs-drain v0.4.3 (/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/crates/s4logs-drain)
+     Running `sccache /home/y1/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name s4logs_drain --edition=2024 crates/s4logs-drain/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--deny=clippy::unwrap_used' --deny=unsafe_code --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=120b82fe868f048b -C extra-filename=-86df719eb6c44877 --out-dir /tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps --extern async_trait=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libasync_trait-c48a4b7d28a0b527.so --extern aws_sdk_cloudwatchlogs=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libaws_sdk_cloudwatchlogs-e637dfd31f9653a1.rlib --extern aws_smithy_mocks=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libaws_smithy_mocks-e214f55184496507.rlib --extern bytes=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libbytes-c38b0fd35cc6fecb.rlib --extern futures=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libfutures-074f1502fbe09421.rlib --extern globset=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libglobset-dccbc00c434044ee.rlib --extern proptest=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libproptest-6cdda6e5611daf44.rlib --extern s4logs_core=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libs4logs_core-66136ebb9a9bc3d3.rlib --extern serde=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libserde-275b5d7a048ce175.rlib --extern serde_json=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libserde_json-311e3bf3dc78b90a.rlib --extern thiserror=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libthiserror-1d46a5990c5ef7d0.rlib --extern tokio=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libtokio-4ad2b2b6518199d6.rlib --extern tracing=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libtracing-7f0711ec7e078f28.rlib --extern zstd=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libzstd-9256fbd3455aef60.rlib -C link-arg=-fuse-ld=mold -L native=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/build/ring-f389914ce3ea36f8/out -L native=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/build/aws-lc-sys-ffdabcfce1d618e5/out -L native=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/build/zstd-sys-a112ef480bb2db37/out`
+     Running `sccache /home/y1/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name s4logs_drain --edition=2024 crates/s4logs-drain/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 '--deny=clippy::unwrap_used' --deny=unsafe_code --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=a7b88426b4f8653f -C extra-filename=-9440ab538f7d2d0b --out-dir /tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps --extern async_trait=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libasync_trait-c48a4b7d28a0b527.so --extern aws_sdk_cloudwatchlogs=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libaws_sdk_cloudwatchlogs-e637dfd31f9653a1.rmeta --extern bytes=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libbytes-c38b0fd35cc6fecb.rmeta --extern futures=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libfutures-074f1502fbe09421.rmeta --extern globset=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libglobset-dccbc00c434044ee.rmeta --extern s4logs_core=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libs4logs_core-66136ebb9a9bc3d3.rmeta --extern serde=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libserde-275b5d7a048ce175.rmeta --extern serde_json=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libserde_json-311e3bf3dc78b90a.rmeta --extern thiserror=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libthiserror-1d46a5990c5ef7d0.rmeta --extern tokio=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libtokio-4ad2b2b6518199d6.rmeta --extern tracing=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libtracing-7f0711ec7e078f28.rmeta --extern zstd=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libzstd-9256fbd3455aef60.rmeta -C link-arg=-fuse-ld=mold -L native=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/build/ring-f389914ce3ea36f8/out -L native=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/build/aws-lc-sys-ffdabcfce1d618e5/out -L native=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/build/zstd-sys-a112ef480bb2db37/out`
+warning: unused import: `s4logs_core::layout::manifest_key`
+  --> crates/s4logs-drain/src/retention.rs:10:5
+   |
+10 | use s4logs_core::layout::manifest_key;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `manifest_covers_window`
+  --> crates/s4logs-drain/src/retention.rs:14:38
+   |
+14 | use crate::manifest::{ManifestStore, manifest_covers_window};
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `DAY_MS` and `windows_covering`
+  --> crates/s4logs-drain/src/retention.rs:15:21
+   |
+15 | use crate::window::{DAY_MS, Window, windows_covering};
+   |                     ^^^^^^          ^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `RetentionPlan: Default` is not satisfied
+  --> crates/s4logs-drain/src/retention.rs:64:8
+   |
+64 |     Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+   |        ^^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `RetentionPlan`
+   |
+help: consider annotating `RetentionPlan` with `#[derive(Default)]`
+   |
+39 + #[derive(Default)]
+40 | pub struct RetentionPlan {
+   |
+
+For more information about this error, try `rustc --explain E0277`.
+warning: `s4logs-drain` (lib) generated 3 warnings
+error: could not compile `s4logs-drain` (lib) due to 1 previous error; 3 warnings emitted
+
+Caused by:
+  process didn't exit successfully: `sccache /home/y1/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name s4logs_drain --edition=2024 crates/s4logs-drain/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 '--deny=clippy::unwrap_used' --deny=unsafe_code --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=a7b88426b4f8653f -C extra-filename=-9440ab538f7d2d0b --out-dir /tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps --extern async_trait=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libasync_trait-c48a4b7d28a0b527.so --extern aws_sdk_cloudwatchlogs=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libaws_sdk_cloudwatchlogs-e637dfd31f9653a1.rmeta --extern bytes=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libbytes-c38b0fd35cc6fecb.rmeta --extern futures=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libfutures-074f1502fbe09421.rmeta --extern globset=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libglobset-dccbc00c434044ee.rmeta --extern s4logs_core=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libs4logs_core-66136ebb9a9bc3d3.rmeta --extern serde=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libserde-275b5d7a048ce175.rmeta --extern serde_json=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libserde_json-311e3bf3dc78b90a.rmeta --extern thiserror=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libthiserror-1d46a5990c5ef7d0.rmeta --extern tokio=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libtokio-4ad2b2b6518199d6.rmeta --extern tracing=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libtracing-7f0711ec7e078f28.rmeta --extern zstd=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libzstd-9256fbd3455aef60.rmeta -C link-arg=-fuse-ld=mold -L native=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/build/ring-f389914ce3ea36f8/out -L native=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/build/aws-lc-sys-ffdabcfce1d618e5/out -L native=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/build/zstd-sys-a112ef480bb2db37/out` (exit status: 1)
+warning: build failed, waiting for other jobs to finish...
+warning: `s4logs-drain` (lib test) generated 2 warnings (2 duplicates)
+error: could not compile `s4logs-drain` (lib test) due to 1 previous error; 2 warnings emitted
+
+Caused by:
+  process didn't exit successfully: `sccache /home/y1/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name s4logs_drain --edition=2024 crates/s4logs-drain/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 '--deny=clippy::unwrap_used' --deny=unsafe_code --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=120b82fe868f048b -C extra-filename=-86df719eb6c44877 --out-dir /tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps --extern async_trait=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libasync_trait-c48a4b7d28a0b527.so --extern aws_sdk_cloudwatchlogs=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libaws_sdk_cloudwatchlogs-e637dfd31f9653a1.rlib --extern aws_smithy_mocks=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libaws_smithy_mocks-e214f55184496507.rlib --extern bytes=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libbytes-c38b0fd35cc6fecb.rlib --extern futures=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libfutures-074f1502fbe09421.rlib --extern globset=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libglobset-dccbc00c434044ee.rlib --extern proptest=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libproptest-6cdda6e5611daf44.rlib --extern s4logs_core=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libs4logs_core-66136ebb9a9bc3d3.rlib --extern serde=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libserde-275b5d7a048ce175.rlib --extern serde_json=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libserde_json-311e3bf3dc78b90a.rlib --extern thiserror=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libthiserror-1d46a5990c5ef7d0.rlib --extern tokio=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libtokio-4ad2b2b6518199d6.rlib --extern tracing=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libtracing-7f0711ec7e078f28.rlib --extern zstd=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/deps/libzstd-9256fbd3455aef60.rlib -C link-arg=-fuse-ld=mold -L native=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/build/ring-f389914ce3ea36f8/out -L native=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/build/aws-lc-sys-ffdabcfce1d618e5/out -L native=/tmp/cargo-mutants-s4-logs-zxx4jL.tmp/target/debug/build/zstd-sys-a112ef480bb2db37/out` (exit status: 1)
+
+*** result: Failure(101)

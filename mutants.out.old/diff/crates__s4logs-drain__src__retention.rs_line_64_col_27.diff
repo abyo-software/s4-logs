@@ -1,0 +1,21 @@
+--- crates/s4logs-drain/src/retention.rs
++++ replace <= with > in plan_retention
+@@ -56,17 +56,17 @@
+ }
+ 
+ /// Compute coverage without touching CloudWatch (report-only path).
+ pub async fn plan_retention(
+     manifests: &dyn ManifestStore,
+     key_prefix: &str,
+     req: &RetentionRequest,
+ ) -> Result<RetentionPlan, DrainError> {
+-    if req.retention_days <= 0 {
++    if req.retention_days > /* ~ changed by cargo-mutants ~ */ 0 {
+         return Err(DrainError::BadOptions(format!(
+             "retention_days must be > 0, got {}",
+             req.retention_days
+         )));
+     }
+     let cutoff_ms = req
+         .now_ms
+         .saturating_sub(i64::from(req.retention_days).saturating_mul(DAY_MS));

@@ -1,0 +1,21 @@
+--- crates/s4logs-drain/src/retention.rs
++++ delete ! in plan_retention
+@@ -92,17 +92,17 @@
+             w.end_ms,
+         );
+         let covered = match manifests.get(&key).await? {
+             None => false,
+             Some(bytes) => {
+                 manifest_covers_window(&bytes, &req.account, &req.log_group, w.start_ms, w.end_ms)
+             }
+         };
+-        if !covered {
++        if  /* ~ changed by cargo-mutants ~ */covered {
+             missing_windows.push(*w);
+         }
+     }
+     Ok(RetentionPlan {
+         log_group: req.log_group.clone(),
+         retention_days: req.retention_days,
+         cutoff_ms,
+         required_windows,

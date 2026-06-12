@@ -1,0 +1,33 @@
+--- crates/s4logs-core/src/read.rs
++++ replace <impl Iterator for RecordLines<'_>>::next -> Option<Self::Item> with Some(Default::default())
+@@ -146,29 +146,17 @@
+         Self { rest: bytes }
+     }
+ }
+ 
+ impl Iterator for RecordLines<'_> {
+     type Item = Result<LogRecord, RecordError>;
+ 
+     fn next(&mut self) -> Option<Self::Item> {
+-        loop {
+-            if self.rest.is_empty() {
+-                return None;
+-            }
+-            let (line, rest) = match self.rest.iter().position(|&b| b == b'\n') {
+-                Some(i) => (&self.rest[..i], &self.rest[i + 1..]),
+-                None => (self.rest, &self.rest[..0]),
+-            };
+-            self.rest = rest;
+-            if !line.is_empty() {
+-                return Some(LogRecord::from_jsonl(line));
+-            }
+-        }
++        Some(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[cfg(test)]
+ #[allow(clippy::unwrap_used)]
+ mod tests {
+     use super::*;
+     use crate::chunk::{ChunkConfig, ChunkWriter};

@@ -1,0 +1,21 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace && with || in manifest_covers_window
+@@ -137,17 +137,17 @@
+     window_start_ms: i64,
+     window_end_ms: i64,
+ ) -> bool {
+     match Manifest::from_json_bytes(bytes) {
+         Ok(m) => {
+             m.account == account
+                 && m.log_group == log_group
+                 && m.window_start_ms == window_start_ms
+-                && m.window_end_ms == window_end_ms
++                || /* ~ changed by cargo-mutants ~ */ m.window_end_ms == window_end_ms
+         }
+         Err(_) => false,
+     }
+ }
+ 
+ /// Parse the window out of a manifest key
+ /// (`…/window={start_ms}-{end_ms}.json`). Returns `None` for foreign keys.
+ /// Window timestamps are non-negative by construction ([`crate::window`]).

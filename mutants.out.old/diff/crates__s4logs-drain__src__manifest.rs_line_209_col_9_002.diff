@@ -1,0 +1,26 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace MemoryManifestStore::keys -> Vec<String> with vec!["xyzzy".into()]
+@@ -201,22 +201,17 @@
+ }
+ 
+ impl MemoryManifestStore {
+     pub fn new() -> Self {
+         Self::default()
+     }
+ 
+     pub fn keys(&self) -> Vec<String> {
+-        self.objects
+-            .lock()
+-            .unwrap_or_else(|e| e.into_inner())
+-            .keys()
+-            .cloned()
+-            .collect()
++        vec!["xyzzy".into()] /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     pub fn is_empty(&self) -> bool {
+         self.objects
+             .lock()
+             .unwrap_or_else(|e| e.into_inner())
+             .is_empty()
+     }

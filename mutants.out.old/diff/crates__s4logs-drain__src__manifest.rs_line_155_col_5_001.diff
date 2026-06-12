@@ -1,0 +1,27 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace parse_manifest_key_window -> Option<Window> with Some(Default::default())
+@@ -147,23 +147,17 @@
+         Err(_) => false,
+     }
+ }
+ 
+ /// Parse the window out of a manifest key
+ /// (`…/window={start_ms}-{end_ms}.json`). Returns `None` for foreign keys.
+ /// Window timestamps are non-negative by construction ([`crate::window`]).
+ pub fn parse_manifest_key_window(key: &str) -> Option<Window> {
+-    let base = key.rsplit('/').next()?;
+-    let inner = base.strip_prefix("window=")?.strip_suffix(".json")?;
+-    let (s, e) = inner.split_once('-')?;
+-    Some(Window {
+-        start_ms: s.parse().ok()?,
+-        end_ms: e.parse().ok()?,
+-    })
++    Some(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Manifest prefix covering every log group of one account
+ /// (`{prefix}manifest/account={acct}/`) — `s4logs report` lists this once
+ /// and filters by [`crate::discover::GroupSelector`] instead of touching
+ /// CloudWatch.
+ pub fn manifest_account_prefix(prefix: &str, account: &str) -> String {
+     format!(

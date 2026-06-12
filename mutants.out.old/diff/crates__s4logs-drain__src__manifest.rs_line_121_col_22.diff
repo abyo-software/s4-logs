@@ -1,0 +1,21 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace != with == in Manifest::from_json_bytes
+@@ -113,17 +113,17 @@
+         serde_json::to_vec(self)
+             .map(Bytes::from)
+             .map_err(ManifestError::Encode)
+     }
+ 
+     /// Decode + version check.
+     pub fn from_json_bytes(bytes: &[u8]) -> Result<Self, ManifestError> {
+         let m: Manifest = serde_json::from_slice(bytes).map_err(ManifestError::Decode)?;
+-        if m.version != MANIFEST_VERSION {
++        if m.version == /* ~ changed by cargo-mutants ~ */ MANIFEST_VERSION {
+             return Err(ManifestError::UnsupportedVersion(m.version));
+         }
+         Ok(m)
+     }
+ }
+ 
+ /// True only if `bytes` decodes into a complete, version-checked manifest
+ /// that belongs to exactly this account / log group / window. Any decode

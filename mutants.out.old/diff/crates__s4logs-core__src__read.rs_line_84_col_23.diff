@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/read.rs
++++ replace += with -= in coalesce_spans
+@@ -76,17 +76,17 @@
+ /// Input must be in object order (as produced by [`frames_overlapping`]).
+ /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.
+ pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {
+     let mut out: Vec<(u64, u64, u64)> = Vec::new();
+     for s in spans {
+         match out.last_mut() {
+             Some((_, end, orig)) if s.byte_start.saturating_sub(*end) <= max_gap_bytes => {
+                 *end = s.byte_end_exclusive;
+-                *orig += s.original_size;
++                *orig -= /* ~ changed by cargo-mutants ~ */ s.original_size;
+             }
+             _ => out.push((s.byte_start, s.byte_end_exclusive, s.original_size)),
+         }
+     }
+     out
+ }
+ 
+ /// How much slack the bomb cap allows over the sidecar-claimed size

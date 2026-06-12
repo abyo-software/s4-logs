@@ -1,0 +1,26 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace manifest_account_prefix -> String with "xyzzy".into()
+@@ -161,22 +161,17 @@
+     })
+ }
+ 
+ /// Manifest prefix covering every log group of one account
+ /// (`{prefix}manifest/account={acct}/`) — `s4logs report` lists this once
+ /// and filters by [`crate::discover::GroupSelector`] instead of touching
+ /// CloudWatch.
+ pub fn manifest_account_prefix(prefix: &str, account: &str) -> String {
+-    format!(
+-        "{}{}/account={}/",
+-        s4logs_core::layout::norm_prefix(prefix),
+-        s4logs_core::layout::MANIFEST_SEG,
+-        account
+-    )
++    "xyzzy".into() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Raw (unsanitized) log group name embedded in a manifest key, or `None`
+ /// for keys that don't carry a `loggroup=` segment.
+ pub fn parse_manifest_key_log_group(key: &str) -> Option<String> {
+     key.split('/')
+         .find_map(|seg| seg.strip_prefix("loggroup="))
+         .and_then(s4logs_core::layout::unsanitize_log_group)

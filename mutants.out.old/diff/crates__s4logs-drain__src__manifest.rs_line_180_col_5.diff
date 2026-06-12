@@ -1,0 +1,23 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace parse_manifest_key_log_group -> Option<String> with None
+@@ -172,19 +172,17 @@
+         s4logs_core::layout::MANIFEST_SEG,
+         account
+     )
+ }
+ 
+ /// Raw (unsanitized) log group name embedded in a manifest key, or `None`
+ /// for keys that don't carry a `loggroup=` segment.
+ pub fn parse_manifest_key_log_group(key: &str) -> Option<String> {
+-    key.split('/')
+-        .find_map(|seg| seg.strip_prefix("loggroup="))
+-        .and_then(s4logs_core::layout::unsanitize_log_group)
++    None /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Object-store operations the drain needs beyond `ChunkSink`: manifest
+ /// get/put/exists/list. Implemented in-memory for tests and as a thin
+ /// adapter over `s4logs_core::store::ObjectStore` for S3.
+ #[async_trait]
+ pub trait ManifestStore: Send + Sync {
+     async fn exists(&self, key: &str) -> Result<bool, ManifestError>;

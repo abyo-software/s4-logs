@@ -1,0 +1,2344 @@
+[
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace ChunkWriter::is_empty -> bool with true\n@@ -95,17 +95,17 @@\n             original_off: 0,\n             record_count: 0,\n             min_ts: i64::MAX,\n             max_ts: i64::MIN,\n         }\n     }\n \n     pub fn is_empty(&self) -> bool {\n-        self.record_count == 0 && self.pending_records == 0\n+        true /* ~ changed by cargo-mutants ~ */\n     }\n \n     /// Total uncompressed bytes accepted so far (flush-threshold signal for\n     /// the gateway buffer).\n     pub fn uncompressed_len(&self) -> u64 {\n         self.original_off + self.pending.len() as u64\n     }\n \n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::is_empty",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 104
+        },
+        "start": {
+          "column": 5,
+          "line": 102
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/chunk.rs:103:9: replace ChunkWriter::is_empty -> bool with true",
+    "package": "s4logs-core",
+    "replacement": "true",
+    "span": {
+      "end": {
+        "column": 60,
+        "line": 103
+      },
+      "start": {
+        "column": 9,
+        "line": 103
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace ChunkWriter::is_empty -> bool with false\n@@ -95,17 +95,17 @@\n             original_off: 0,\n             record_count: 0,\n             min_ts: i64::MAX,\n             max_ts: i64::MIN,\n         }\n     }\n \n     pub fn is_empty(&self) -> bool {\n-        self.record_count == 0 && self.pending_records == 0\n+        false /* ~ changed by cargo-mutants ~ */\n     }\n \n     /// Total uncompressed bytes accepted so far (flush-threshold signal for\n     /// the gateway buffer).\n     pub fn uncompressed_len(&self) -> u64 {\n         self.original_off + self.pending.len() as u64\n     }\n \n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::is_empty",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 104
+        },
+        "start": {
+          "column": 5,
+          "line": 102
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/chunk.rs:103:9: replace ChunkWriter::is_empty -> bool with false",
+    "package": "s4logs-core",
+    "replacement": "false",
+    "span": {
+      "end": {
+        "column": 60,
+        "line": 103
+      },
+      "start": {
+        "column": 9,
+        "line": 103
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace && with || in ChunkWriter::is_empty\n@@ -95,17 +95,17 @@\n             original_off: 0,\n             record_count: 0,\n             min_ts: i64::MAX,\n             max_ts: i64::MIN,\n         }\n     }\n \n     pub fn is_empty(&self) -> bool {\n-        self.record_count == 0 && self.pending_records == 0\n+        self.record_count == 0 || /* ~ changed by cargo-mutants ~ */ self.pending_records == 0\n     }\n \n     /// Total uncompressed bytes accepted so far (flush-threshold signal for\n     /// the gateway buffer).\n     pub fn uncompressed_len(&self) -> u64 {\n         self.original_off + self.pending.len() as u64\n     }\n \n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::is_empty",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 104
+        },
+        "start": {
+          "column": 5,
+          "line": 102
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:103:32: replace && with || in ChunkWriter::is_empty",
+    "package": "s4logs-core",
+    "replacement": "||",
+    "span": {
+      "end": {
+        "column": 34,
+        "line": 103
+      },
+      "start": {
+        "column": 32,
+        "line": 103
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace == with != in ChunkWriter::is_empty\n@@ -95,17 +95,17 @@\n             original_off: 0,\n             record_count: 0,\n             min_ts: i64::MAX,\n             max_ts: i64::MIN,\n         }\n     }\n \n     pub fn is_empty(&self) -> bool {\n-        self.record_count == 0 && self.pending_records == 0\n+        self.record_count != /* ~ changed by cargo-mutants ~ */ 0 && self.pending_records == 0\n     }\n \n     /// Total uncompressed bytes accepted so far (flush-threshold signal for\n     /// the gateway buffer).\n     pub fn uncompressed_len(&self) -> u64 {\n         self.original_off + self.pending.len() as u64\n     }\n \n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::is_empty",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 104
+        },
+        "start": {
+          "column": 5,
+          "line": 102
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:103:27: replace == with != in ChunkWriter::is_empty",
+    "package": "s4logs-core",
+    "replacement": "!=",
+    "span": {
+      "end": {
+        "column": 29,
+        "line": 103
+      },
+      "start": {
+        "column": 27,
+        "line": 103
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace == with != in ChunkWriter::is_empty\n@@ -95,17 +95,17 @@\n             original_off: 0,\n             record_count: 0,\n             min_ts: i64::MAX,\n             max_ts: i64::MIN,\n         }\n     }\n \n     pub fn is_empty(&self) -> bool {\n-        self.record_count == 0 && self.pending_records == 0\n+        self.record_count == 0 && self.pending_records != /* ~ changed by cargo-mutants ~ */ 0\n     }\n \n     /// Total uncompressed bytes accepted so far (flush-threshold signal for\n     /// the gateway buffer).\n     pub fn uncompressed_len(&self) -> u64 {\n         self.original_off + self.pending.len() as u64\n     }\n \n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::is_empty",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 104
+        },
+        "start": {
+          "column": 5,
+          "line": 102
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:103:56: replace == with != in ChunkWriter::is_empty",
+    "package": "s4logs-core",
+    "replacement": "!=",
+    "span": {
+      "end": {
+        "column": 58,
+        "line": 103
+      },
+      "start": {
+        "column": 56,
+        "line": 103
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace ChunkWriter::uncompressed_len -> u64 with 0\n@@ -101,17 +101,17 @@\n \n     pub fn is_empty(&self) -> bool {\n         self.record_count == 0 && self.pending_records == 0\n     }\n \n     /// Total uncompressed bytes accepted so far (flush-threshold signal for\n     /// the gateway buffer).\n     pub fn uncompressed_len(&self) -> u64 {\n-        self.original_off + self.pending.len() as u64\n+        0 /* ~ changed by cargo-mutants ~ */\n     }\n \n     pub fn record_count(&self) -> u64 {\n         self.record_count + self.pending_records\n     }\n \n     pub fn push(&mut self, rec: &LogRecord) -> Result<(), ChunkError> {\n         rec.append_jsonl(&mut self.pending)?;\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::uncompressed_len",
+      "return_type": "-> u64",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 110
+        },
+        "start": {
+          "column": 5,
+          "line": 106
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/chunk.rs:109:9: replace ChunkWriter::uncompressed_len -> u64 with 0",
+    "package": "s4logs-core",
+    "replacement": "0",
+    "span": {
+      "end": {
+        "column": 54,
+        "line": 109
+      },
+      "start": {
+        "column": 9,
+        "line": 109
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace ChunkWriter::uncompressed_len -> u64 with 1\n@@ -101,17 +101,17 @@\n \n     pub fn is_empty(&self) -> bool {\n         self.record_count == 0 && self.pending_records == 0\n     }\n \n     /// Total uncompressed bytes accepted so far (flush-threshold signal for\n     /// the gateway buffer).\n     pub fn uncompressed_len(&self) -> u64 {\n-        self.original_off + self.pending.len() as u64\n+        1 /* ~ changed by cargo-mutants ~ */\n     }\n \n     pub fn record_count(&self) -> u64 {\n         self.record_count + self.pending_records\n     }\n \n     pub fn push(&mut self, rec: &LogRecord) -> Result<(), ChunkError> {\n         rec.append_jsonl(&mut self.pending)?;\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::uncompressed_len",
+      "return_type": "-> u64",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 110
+        },
+        "start": {
+          "column": 5,
+          "line": 106
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/chunk.rs:109:9: replace ChunkWriter::uncompressed_len -> u64 with 1",
+    "package": "s4logs-core",
+    "replacement": "1",
+    "span": {
+      "end": {
+        "column": 54,
+        "line": 109
+      },
+      "start": {
+        "column": 9,
+        "line": 109
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace + with - in ChunkWriter::uncompressed_len\n@@ -101,17 +101,17 @@\n \n     pub fn is_empty(&self) -> bool {\n         self.record_count == 0 && self.pending_records == 0\n     }\n \n     /// Total uncompressed bytes accepted so far (flush-threshold signal for\n     /// the gateway buffer).\n     pub fn uncompressed_len(&self) -> u64 {\n-        self.original_off + self.pending.len() as u64\n+        self.original_off - /* ~ changed by cargo-mutants ~ */ self.pending.len() as u64\n     }\n \n     pub fn record_count(&self) -> u64 {\n         self.record_count + self.pending_records\n     }\n \n     pub fn push(&mut self, rec: &LogRecord) -> Result<(), ChunkError> {\n         rec.append_jsonl(&mut self.pending)?;\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::uncompressed_len",
+      "return_type": "-> u64",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 110
+        },
+        "start": {
+          "column": 5,
+          "line": 106
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:109:27: replace + with - in ChunkWriter::uncompressed_len",
+    "package": "s4logs-core",
+    "replacement": "-",
+    "span": {
+      "end": {
+        "column": 28,
+        "line": 109
+      },
+      "start": {
+        "column": 27,
+        "line": 109
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace + with * in ChunkWriter::uncompressed_len\n@@ -101,17 +101,17 @@\n \n     pub fn is_empty(&self) -> bool {\n         self.record_count == 0 && self.pending_records == 0\n     }\n \n     /// Total uncompressed bytes accepted so far (flush-threshold signal for\n     /// the gateway buffer).\n     pub fn uncompressed_len(&self) -> u64 {\n-        self.original_off + self.pending.len() as u64\n+        self.original_off * /* ~ changed by cargo-mutants ~ */ self.pending.len() as u64\n     }\n \n     pub fn record_count(&self) -> u64 {\n         self.record_count + self.pending_records\n     }\n \n     pub fn push(&mut self, rec: &LogRecord) -> Result<(), ChunkError> {\n         rec.append_jsonl(&mut self.pending)?;\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::uncompressed_len",
+      "return_type": "-> u64",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 110
+        },
+        "start": {
+          "column": 5,
+          "line": 106
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:109:27: replace + with * in ChunkWriter::uncompressed_len",
+    "package": "s4logs-core",
+    "replacement": "*",
+    "span": {
+      "end": {
+        "column": 28,
+        "line": 109
+      },
+      "start": {
+        "column": 27,
+        "line": 109
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace ChunkWriter::record_count -> u64 with 0\n@@ -105,17 +105,17 @@\n \n     /// Total uncompressed bytes accepted so far (flush-threshold signal for\n     /// the gateway buffer).\n     pub fn uncompressed_len(&self) -> u64 {\n         self.original_off + self.pending.len() as u64\n     }\n \n     pub fn record_count(&self) -> u64 {\n-        self.record_count + self.pending_records\n+        0 /* ~ changed by cargo-mutants ~ */\n     }\n \n     pub fn push(&mut self, rec: &LogRecord) -> Result<(), ChunkError> {\n         rec.append_jsonl(&mut self.pending)?;\n         self.pending_min_ts = self.pending_min_ts.min(rec.timestamp);\n         self.pending_max_ts = self.pending_max_ts.max(rec.timestamp);\n         self.pending_records += 1;\n         if self.pending.len() >= self.cfg.frame_target_bytes {\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::record_count",
+      "return_type": "-> u64",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 114
+        },
+        "start": {
+          "column": 5,
+          "line": 112
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/chunk.rs:113:9: replace ChunkWriter::record_count -> u64 with 0",
+    "package": "s4logs-core",
+    "replacement": "0",
+    "span": {
+      "end": {
+        "column": 49,
+        "line": 113
+      },
+      "start": {
+        "column": 9,
+        "line": 113
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace ChunkWriter::record_count -> u64 with 1\n@@ -105,17 +105,17 @@\n \n     /// Total uncompressed bytes accepted so far (flush-threshold signal for\n     /// the gateway buffer).\n     pub fn uncompressed_len(&self) -> u64 {\n         self.original_off + self.pending.len() as u64\n     }\n \n     pub fn record_count(&self) -> u64 {\n-        self.record_count + self.pending_records\n+        1 /* ~ changed by cargo-mutants ~ */\n     }\n \n     pub fn push(&mut self, rec: &LogRecord) -> Result<(), ChunkError> {\n         rec.append_jsonl(&mut self.pending)?;\n         self.pending_min_ts = self.pending_min_ts.min(rec.timestamp);\n         self.pending_max_ts = self.pending_max_ts.max(rec.timestamp);\n         self.pending_records += 1;\n         if self.pending.len() >= self.cfg.frame_target_bytes {\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::record_count",
+      "return_type": "-> u64",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 114
+        },
+        "start": {
+          "column": 5,
+          "line": 112
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/chunk.rs:113:9: replace ChunkWriter::record_count -> u64 with 1",
+    "package": "s4logs-core",
+    "replacement": "1",
+    "span": {
+      "end": {
+        "column": 49,
+        "line": 113
+      },
+      "start": {
+        "column": 9,
+        "line": 113
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace + with - in ChunkWriter::record_count\n@@ -105,17 +105,17 @@\n \n     /// Total uncompressed bytes accepted so far (flush-threshold signal for\n     /// the gateway buffer).\n     pub fn uncompressed_len(&self) -> u64 {\n         self.original_off + self.pending.len() as u64\n     }\n \n     pub fn record_count(&self) -> u64 {\n-        self.record_count + self.pending_records\n+        self.record_count - /* ~ changed by cargo-mutants ~ */ self.pending_records\n     }\n \n     pub fn push(&mut self, rec: &LogRecord) -> Result<(), ChunkError> {\n         rec.append_jsonl(&mut self.pending)?;\n         self.pending_min_ts = self.pending_min_ts.min(rec.timestamp);\n         self.pending_max_ts = self.pending_max_ts.max(rec.timestamp);\n         self.pending_records += 1;\n         if self.pending.len() >= self.cfg.frame_target_bytes {\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::record_count",
+      "return_type": "-> u64",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 114
+        },
+        "start": {
+          "column": 5,
+          "line": 112
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:113:27: replace + with - in ChunkWriter::record_count",
+    "package": "s4logs-core",
+    "replacement": "-",
+    "span": {
+      "end": {
+        "column": 28,
+        "line": 113
+      },
+      "start": {
+        "column": 27,
+        "line": 113
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace + with * in ChunkWriter::record_count\n@@ -105,17 +105,17 @@\n \n     /// Total uncompressed bytes accepted so far (flush-threshold signal for\n     /// the gateway buffer).\n     pub fn uncompressed_len(&self) -> u64 {\n         self.original_off + self.pending.len() as u64\n     }\n \n     pub fn record_count(&self) -> u64 {\n-        self.record_count + self.pending_records\n+        self.record_count * /* ~ changed by cargo-mutants ~ */ self.pending_records\n     }\n \n     pub fn push(&mut self, rec: &LogRecord) -> Result<(), ChunkError> {\n         rec.append_jsonl(&mut self.pending)?;\n         self.pending_min_ts = self.pending_min_ts.min(rec.timestamp);\n         self.pending_max_ts = self.pending_max_ts.max(rec.timestamp);\n         self.pending_records += 1;\n         if self.pending.len() >= self.cfg.frame_target_bytes {\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::record_count",
+      "return_type": "-> u64",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 114
+        },
+        "start": {
+          "column": 5,
+          "line": 112
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:113:27: replace + with * in ChunkWriter::record_count",
+    "package": "s4logs-core",
+    "replacement": "*",
+    "span": {
+      "end": {
+        "column": 28,
+        "line": 113
+      },
+      "start": {
+        "column": 27,
+        "line": 113
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace ChunkWriter::push -> Result<(), ChunkError> with Ok(())\n@@ -109,24 +109,17 @@\n         self.original_off + self.pending.len() as u64\n     }\n \n     pub fn record_count(&self) -> u64 {\n         self.record_count + self.pending_records\n     }\n \n     pub fn push(&mut self, rec: &LogRecord) -> Result<(), ChunkError> {\n-        rec.append_jsonl(&mut self.pending)?;\n-        self.pending_min_ts = self.pending_min_ts.min(rec.timestamp);\n-        self.pending_max_ts = self.pending_max_ts.max(rec.timestamp);\n-        self.pending_records += 1;\n-        if self.pending.len() >= self.cfg.frame_target_bytes {\n-            self.cut_frame()?;\n-        }\n-        Ok(())\n+        Ok(()) /* ~ changed by cargo-mutants ~ */\n     }\n \n     fn cut_frame(&mut self) -> Result<(), ChunkError> {\n         if self.pending.is_empty() {\n             return Ok(());\n         }\n         let compressed = compress_frame(&self.pending, self.cfg.zstd_level)?;\n         self.entries.push(FrameIndexEntry {\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::push",
+      "return_type": "-> Result<(), ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 125
+        },
+        "start": {
+          "column": 5,
+          "line": 116
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/chunk.rs:117:9: replace ChunkWriter::push -> Result<(), ChunkError> with Ok(())",
+    "package": "s4logs-core",
+    "replacement": "Ok(())",
+    "span": {
+      "end": {
+        "column": 15,
+        "line": 124
+      },
+      "start": {
+        "column": 9,
+        "line": 117
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace += with -= in ChunkWriter::push\n@@ -112,17 +112,17 @@\n     pub fn record_count(&self) -> u64 {\n         self.record_count + self.pending_records\n     }\n \n     pub fn push(&mut self, rec: &LogRecord) -> Result<(), ChunkError> {\n         rec.append_jsonl(&mut self.pending)?;\n         self.pending_min_ts = self.pending_min_ts.min(rec.timestamp);\n         self.pending_max_ts = self.pending_max_ts.max(rec.timestamp);\n-        self.pending_records += 1;\n+        self.pending_records -= /* ~ changed by cargo-mutants ~ */ 1;\n         if self.pending.len() >= self.cfg.frame_target_bytes {\n             self.cut_frame()?;\n         }\n         Ok(())\n     }\n \n     fn cut_frame(&mut self) -> Result<(), ChunkError> {\n         if self.pending.is_empty() {\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::push",
+      "return_type": "-> Result<(), ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 125
+        },
+        "start": {
+          "column": 5,
+          "line": 116
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:120:30: replace += with -= in ChunkWriter::push",
+    "package": "s4logs-core",
+    "replacement": "-=",
+    "span": {
+      "end": {
+        "column": 32,
+        "line": 120
+      },
+      "start": {
+        "column": 30,
+        "line": 120
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace += with *= in ChunkWriter::push\n@@ -112,17 +112,17 @@\n     pub fn record_count(&self) -> u64 {\n         self.record_count + self.pending_records\n     }\n \n     pub fn push(&mut self, rec: &LogRecord) -> Result<(), ChunkError> {\n         rec.append_jsonl(&mut self.pending)?;\n         self.pending_min_ts = self.pending_min_ts.min(rec.timestamp);\n         self.pending_max_ts = self.pending_max_ts.max(rec.timestamp);\n-        self.pending_records += 1;\n+        self.pending_records *= /* ~ changed by cargo-mutants ~ */ 1;\n         if self.pending.len() >= self.cfg.frame_target_bytes {\n             self.cut_frame()?;\n         }\n         Ok(())\n     }\n \n     fn cut_frame(&mut self) -> Result<(), ChunkError> {\n         if self.pending.is_empty() {\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::push",
+      "return_type": "-> Result<(), ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 125
+        },
+        "start": {
+          "column": 5,
+          "line": 116
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:120:30: replace += with *= in ChunkWriter::push",
+    "package": "s4logs-core",
+    "replacement": "*=",
+    "span": {
+      "end": {
+        "column": 32,
+        "line": 120
+      },
+      "start": {
+        "column": 30,
+        "line": 120
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace >= with < in ChunkWriter::push\n@@ -113,17 +113,17 @@\n         self.record_count + self.pending_records\n     }\n \n     pub fn push(&mut self, rec: &LogRecord) -> Result<(), ChunkError> {\n         rec.append_jsonl(&mut self.pending)?;\n         self.pending_min_ts = self.pending_min_ts.min(rec.timestamp);\n         self.pending_max_ts = self.pending_max_ts.max(rec.timestamp);\n         self.pending_records += 1;\n-        if self.pending.len() >= self.cfg.frame_target_bytes {\n+        if self.pending.len() < /* ~ changed by cargo-mutants ~ */ self.cfg.frame_target_bytes {\n             self.cut_frame()?;\n         }\n         Ok(())\n     }\n \n     fn cut_frame(&mut self) -> Result<(), ChunkError> {\n         if self.pending.is_empty() {\n             return Ok(());\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::push",
+      "return_type": "-> Result<(), ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 125
+        },
+        "start": {
+          "column": 5,
+          "line": 116
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:121:31: replace >= with < in ChunkWriter::push",
+    "package": "s4logs-core",
+    "replacement": "<",
+    "span": {
+      "end": {
+        "column": 33,
+        "line": 121
+      },
+      "start": {
+        "column": 31,
+        "line": 121
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace ChunkWriter::cut_frame -> Result<(), ChunkError> with Ok(())\n@@ -120,40 +120,17 @@\n         self.pending_records += 1;\n         if self.pending.len() >= self.cfg.frame_target_bytes {\n             self.cut_frame()?;\n         }\n         Ok(())\n     }\n \n     fn cut_frame(&mut self) -> Result<(), ChunkError> {\n-        if self.pending.is_empty() {\n-            return Ok(());\n-        }\n-        let compressed = compress_frame(&self.pending, self.cfg.zstd_level)?;\n-        self.entries.push(FrameIndexEntry {\n-            original_offset: self.original_off,\n-            original_size: self.pending.len() as u64,\n-            compressed_offset: self.body.len() as u64,\n-            compressed_size: compressed.len() as u64,\n-        });\n-        self.ts_entries.push(TsEntry {\n-            min_ts: self.pending_min_ts,\n-            max_ts: self.pending_max_ts,\n-        });\n-        self.original_off += self.pending.len() as u64;\n-        self.body.extend_from_slice(&compressed);\n-        self.record_count += self.pending_records;\n-        self.min_ts = self.min_ts.min(self.pending_min_ts);\n-        self.max_ts = self.max_ts.max(self.pending_max_ts);\n-        self.pending.clear();\n-        self.pending_min_ts = i64::MAX;\n-        self.pending_max_ts = i64::MIN;\n-        self.pending_records = 0;\n-        Ok(())\n+        Ok(()) /* ~ changed by cargo-mutants ~ */\n     }\n \n     /// Finalize, consuming the writer. Returns `None` if no record was pushed.\n     pub fn finish(self) -> Result<Option<EncodedChunk>, ChunkError> {\n         self.encode()\n     }\n \n     /// Encode **without consuming** the writer — the buffer stays usable, so\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::cut_frame",
+      "return_type": "-> Result<(), ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 152
+        },
+        "start": {
+          "column": 5,
+          "line": 127
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/chunk.rs:128:9: replace ChunkWriter::cut_frame -> Result<(), ChunkError> with Ok(())",
+    "package": "s4logs-core",
+    "replacement": "Ok(())",
+    "span": {
+      "end": {
+        "column": 15,
+        "line": 151
+      },
+      "start": {
+        "column": 9,
+        "line": 128
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace += with -= in ChunkWriter::cut_frame\n@@ -134,17 +134,17 @@\n             original_size: self.pending.len() as u64,\n             compressed_offset: self.body.len() as u64,\n             compressed_size: compressed.len() as u64,\n         });\n         self.ts_entries.push(TsEntry {\n             min_ts: self.pending_min_ts,\n             max_ts: self.pending_max_ts,\n         });\n-        self.original_off += self.pending.len() as u64;\n+        self.original_off -= /* ~ changed by cargo-mutants ~ */ self.pending.len() as u64;\n         self.body.extend_from_slice(&compressed);\n         self.record_count += self.pending_records;\n         self.min_ts = self.min_ts.min(self.pending_min_ts);\n         self.max_ts = self.max_ts.max(self.pending_max_ts);\n         self.pending.clear();\n         self.pending_min_ts = i64::MAX;\n         self.pending_max_ts = i64::MIN;\n         self.pending_records = 0;\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::cut_frame",
+      "return_type": "-> Result<(), ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 152
+        },
+        "start": {
+          "column": 5,
+          "line": 127
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:142:27: replace += with -= in ChunkWriter::cut_frame",
+    "package": "s4logs-core",
+    "replacement": "-=",
+    "span": {
+      "end": {
+        "column": 29,
+        "line": 142
+      },
+      "start": {
+        "column": 27,
+        "line": 142
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace += with *= in ChunkWriter::cut_frame\n@@ -134,17 +134,17 @@\n             original_size: self.pending.len() as u64,\n             compressed_offset: self.body.len() as u64,\n             compressed_size: compressed.len() as u64,\n         });\n         self.ts_entries.push(TsEntry {\n             min_ts: self.pending_min_ts,\n             max_ts: self.pending_max_ts,\n         });\n-        self.original_off += self.pending.len() as u64;\n+        self.original_off *= /* ~ changed by cargo-mutants ~ */ self.pending.len() as u64;\n         self.body.extend_from_slice(&compressed);\n         self.record_count += self.pending_records;\n         self.min_ts = self.min_ts.min(self.pending_min_ts);\n         self.max_ts = self.max_ts.max(self.pending_max_ts);\n         self.pending.clear();\n         self.pending_min_ts = i64::MAX;\n         self.pending_max_ts = i64::MIN;\n         self.pending_records = 0;\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::cut_frame",
+      "return_type": "-> Result<(), ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 152
+        },
+        "start": {
+          "column": 5,
+          "line": 127
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:142:27: replace += with *= in ChunkWriter::cut_frame",
+    "package": "s4logs-core",
+    "replacement": "*=",
+    "span": {
+      "end": {
+        "column": 29,
+        "line": 142
+      },
+      "start": {
+        "column": 27,
+        "line": 142
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace += with -= in ChunkWriter::cut_frame\n@@ -136,17 +136,17 @@\n             compressed_size: compressed.len() as u64,\n         });\n         self.ts_entries.push(TsEntry {\n             min_ts: self.pending_min_ts,\n             max_ts: self.pending_max_ts,\n         });\n         self.original_off += self.pending.len() as u64;\n         self.body.extend_from_slice(&compressed);\n-        self.record_count += self.pending_records;\n+        self.record_count -= /* ~ changed by cargo-mutants ~ */ self.pending_records;\n         self.min_ts = self.min_ts.min(self.pending_min_ts);\n         self.max_ts = self.max_ts.max(self.pending_max_ts);\n         self.pending.clear();\n         self.pending_min_ts = i64::MAX;\n         self.pending_max_ts = i64::MIN;\n         self.pending_records = 0;\n         Ok(())\n     }\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::cut_frame",
+      "return_type": "-> Result<(), ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 152
+        },
+        "start": {
+          "column": 5,
+          "line": 127
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:144:27: replace += with -= in ChunkWriter::cut_frame",
+    "package": "s4logs-core",
+    "replacement": "-=",
+    "span": {
+      "end": {
+        "column": 29,
+        "line": 144
+      },
+      "start": {
+        "column": 27,
+        "line": 144
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace += with *= in ChunkWriter::cut_frame\n@@ -136,17 +136,17 @@\n             compressed_size: compressed.len() as u64,\n         });\n         self.ts_entries.push(TsEntry {\n             min_ts: self.pending_min_ts,\n             max_ts: self.pending_max_ts,\n         });\n         self.original_off += self.pending.len() as u64;\n         self.body.extend_from_slice(&compressed);\n-        self.record_count += self.pending_records;\n+        self.record_count *= /* ~ changed by cargo-mutants ~ */ self.pending_records;\n         self.min_ts = self.min_ts.min(self.pending_min_ts);\n         self.max_ts = self.max_ts.max(self.pending_max_ts);\n         self.pending.clear();\n         self.pending_min_ts = i64::MAX;\n         self.pending_max_ts = i64::MIN;\n         self.pending_records = 0;\n         Ok(())\n     }\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::cut_frame",
+      "return_type": "-> Result<(), ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 152
+        },
+        "start": {
+          "column": 5,
+          "line": 127
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:144:27: replace += with *= in ChunkWriter::cut_frame",
+    "package": "s4logs-core",
+    "replacement": "*=",
+    "span": {
+      "end": {
+        "column": 29,
+        "line": 144
+      },
+      "start": {
+        "column": 27,
+        "line": 144
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace ChunkWriter::finish -> Result<Option<EncodedChunk>, ChunkError> with Ok(None)\n@@ -148,17 +148,17 @@\n         self.pending_min_ts = i64::MAX;\n         self.pending_max_ts = i64::MIN;\n         self.pending_records = 0;\n         Ok(())\n     }\n \n     /// Finalize, consuming the writer. Returns `None` if no record was pushed.\n     pub fn finish(self) -> Result<Option<EncodedChunk>, ChunkError> {\n-        self.encode()\n+        Ok(None) /* ~ changed by cargo-mutants ~ */\n     }\n \n     /// Encode **without consuming** the writer — the buffer stays usable, so\n     /// a caller whose store PUT fails can retry the same writer instead of\n     /// losing the events (gateway flush-failure recovery). The already-cut\n     /// frames are reused; only the uncut `pending` tail is compressed here,\n     /// into a clone, so `self` is untouched.\n     pub fn encode(&self) -> Result<Option<EncodedChunk>, ChunkError> {\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::finish",
+      "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 157
+        },
+        "start": {
+          "column": 5,
+          "line": 154
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/chunk.rs:156:9: replace ChunkWriter::finish -> Result<Option<EncodedChunk>, ChunkError> with Ok(None)",
+    "package": "s4logs-core",
+    "replacement": "Ok(None)",
+    "span": {
+      "end": {
+        "column": 22,
+        "line": 156
+      },
+      "start": {
+        "column": 9,
+        "line": 156
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace ChunkWriter::finish -> Result<Option<EncodedChunk>, ChunkError> with Ok(Some(Default::default()))\n@@ -148,17 +148,17 @@\n         self.pending_min_ts = i64::MAX;\n         self.pending_max_ts = i64::MIN;\n         self.pending_records = 0;\n         Ok(())\n     }\n \n     /// Finalize, consuming the writer. Returns `None` if no record was pushed.\n     pub fn finish(self) -> Result<Option<EncodedChunk>, ChunkError> {\n-        self.encode()\n+        Ok(Some(Default::default())) /* ~ changed by cargo-mutants ~ */\n     }\n \n     /// Encode **without consuming** the writer — the buffer stays usable, so\n     /// a caller whose store PUT fails can retry the same writer instead of\n     /// losing the events (gateway flush-failure recovery). The already-cut\n     /// frames are reused; only the uncut `pending` tail is compressed here,\n     /// into a clone, so `self` is untouched.\n     pub fn encode(&self) -> Result<Option<EncodedChunk>, ChunkError> {\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::finish",
+      "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 157
+        },
+        "start": {
+          "column": 5,
+          "line": 154
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/chunk.rs:156:9: replace ChunkWriter::finish -> Result<Option<EncodedChunk>, ChunkError> with Ok(Some(Default::default()))",
+    "package": "s4logs-core",
+    "replacement": "Ok(Some(Default::default()))",
+    "span": {
+      "end": {
+        "column": 22,
+        "line": 156
+      },
+      "start": {
+        "column": 9,
+        "line": 156
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace ChunkWriter::encode -> Result<Option<EncodedChunk>, ChunkError> with Ok(None)\n@@ -157,64 +157,17 @@\n     }\n \n     /// Encode **without consuming** the writer — the buffer stays usable, so\n     /// a caller whose store PUT fails can retry the same writer instead of\n     /// losing the events (gateway flush-failure recovery). The already-cut\n     /// frames are reused; only the uncut `pending` tail is compressed here,\n     /// into a clone, so `self` is untouched.\n     pub fn encode(&self) -> Result<Option<EncodedChunk>, ChunkError> {\n-        let mut entries = self.entries.clone();\n-        let mut ts_entries = self.ts_entries.clone();\n-        let mut body = self.body.clone();\n-        let mut original_off = self.original_off;\n-        let mut record_count = self.record_count;\n-        let mut min_ts = self.min_ts;\n-        let mut max_ts = self.max_ts;\n-        if !self.pending.is_empty() {\n-            let compressed = compress_frame(&self.pending, self.cfg.zstd_level)?;\n-            entries.push(FrameIndexEntry {\n-                original_offset: original_off,\n-                original_size: self.pending.len() as u64,\n-                compressed_offset: body.len() as u64,\n-                compressed_size: compressed.len() as u64,\n-            });\n-            ts_entries.push(TsEntry {\n-                min_ts: self.pending_min_ts,\n-                max_ts: self.pending_max_ts,\n-            });\n-            original_off += self.pending.len() as u64;\n-            body.extend_from_slice(&compressed);\n-            record_count += self.pending_records;\n-            min_ts = min_ts.min(self.pending_min_ts);\n-            max_ts = max_ts.max(self.pending_max_ts);\n-        }\n-        if entries.is_empty() {\n-            return Ok(None);\n-        }\n-        let body = Bytes::from(body);\n-        let crc = crc32c::crc32c(&body);\n-        Ok(Some(EncodedChunk {\n-            frame_index: FrameIndex {\n-                total_padded_size: body.len() as u64,\n-                entries,\n-                source_etag: None,\n-                source_compressed_size: None,\n-                sse_v3: None,\n-            },\n-            ts_index: TsIndex {\n-                entries: ts_entries,\n-            },\n-            record_count,\n-            uncompressed_bytes: original_off,\n-            min_timestamp: min_ts,\n-            max_timestamp: max_ts,\n-            crc32c: crc,\n-            body,\n-        }))\n+        Ok(None) /* ~ changed by cargo-mutants ~ */\n     }\n }\n \n /// Compress one standalone standard zstd frame with content checksum.\n fn compress_frame(input: &[u8], level: i32) -> std::io::Result<Vec<u8>> {\n     let mut enc =\n         zstd::stream::write::Encoder::new(Vec::with_capacity(input.len() / 4 + 64), level)?;\n     enc.include_checksum(true)?;\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::encode",
+      "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 213
+        },
+        "start": {
+          "column": 5,
+          "line": 159
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/chunk.rs:165:9: replace ChunkWriter::encode -> Result<Option<EncodedChunk>, ChunkError> with Ok(None)",
+    "package": "s4logs-core",
+    "replacement": "Ok(None)",
+    "span": {
+      "end": {
+        "column": 12,
+        "line": 212
+      },
+      "start": {
+        "column": 9,
+        "line": 165
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace ChunkWriter::encode -> Result<Option<EncodedChunk>, ChunkError> with Ok(Some(Default::default()))\n@@ -157,64 +157,17 @@\n     }\n \n     /// Encode **without consuming** the writer — the buffer stays usable, so\n     /// a caller whose store PUT fails can retry the same writer instead of\n     /// losing the events (gateway flush-failure recovery). The already-cut\n     /// frames are reused; only the uncut `pending` tail is compressed here,\n     /// into a clone, so `self` is untouched.\n     pub fn encode(&self) -> Result<Option<EncodedChunk>, ChunkError> {\n-        let mut entries = self.entries.clone();\n-        let mut ts_entries = self.ts_entries.clone();\n-        let mut body = self.body.clone();\n-        let mut original_off = self.original_off;\n-        let mut record_count = self.record_count;\n-        let mut min_ts = self.min_ts;\n-        let mut max_ts = self.max_ts;\n-        if !self.pending.is_empty() {\n-            let compressed = compress_frame(&self.pending, self.cfg.zstd_level)?;\n-            entries.push(FrameIndexEntry {\n-                original_offset: original_off,\n-                original_size: self.pending.len() as u64,\n-                compressed_offset: body.len() as u64,\n-                compressed_size: compressed.len() as u64,\n-            });\n-            ts_entries.push(TsEntry {\n-                min_ts: self.pending_min_ts,\n-                max_ts: self.pending_max_ts,\n-            });\n-            original_off += self.pending.len() as u64;\n-            body.extend_from_slice(&compressed);\n-            record_count += self.pending_records;\n-            min_ts = min_ts.min(self.pending_min_ts);\n-            max_ts = max_ts.max(self.pending_max_ts);\n-        }\n-        if entries.is_empty() {\n-            return Ok(None);\n-        }\n-        let body = Bytes::from(body);\n-        let crc = crc32c::crc32c(&body);\n-        Ok(Some(EncodedChunk {\n-            frame_index: FrameIndex {\n-                total_padded_size: body.len() as u64,\n-                entries,\n-                source_etag: None,\n-                source_compressed_size: None,\n-                sse_v3: None,\n-            },\n-            ts_index: TsIndex {\n-                entries: ts_entries,\n-            },\n-            record_count,\n-            uncompressed_bytes: original_off,\n-            min_timestamp: min_ts,\n-            max_timestamp: max_ts,\n-            crc32c: crc,\n-            body,\n-        }))\n+        Ok(Some(Default::default())) /* ~ changed by cargo-mutants ~ */\n     }\n }\n \n /// Compress one standalone standard zstd frame with content checksum.\n fn compress_frame(input: &[u8], level: i32) -> std::io::Result<Vec<u8>> {\n     let mut enc =\n         zstd::stream::write::Encoder::new(Vec::with_capacity(input.len() / 4 + 64), level)?;\n     enc.include_checksum(true)?;\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::encode",
+      "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 213
+        },
+        "start": {
+          "column": 5,
+          "line": 159
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/chunk.rs:165:9: replace ChunkWriter::encode -> Result<Option<EncodedChunk>, ChunkError> with Ok(Some(Default::default()))",
+    "package": "s4logs-core",
+    "replacement": "Ok(Some(Default::default()))",
+    "span": {
+      "end": {
+        "column": 12,
+        "line": 212
+      },
+      "start": {
+        "column": 9,
+        "line": 165
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ delete ! in ChunkWriter::encode\n@@ -164,17 +164,17 @@\n     pub fn encode(&self) -> Result<Option<EncodedChunk>, ChunkError> {\n         let mut entries = self.entries.clone();\n         let mut ts_entries = self.ts_entries.clone();\n         let mut body = self.body.clone();\n         let mut original_off = self.original_off;\n         let mut record_count = self.record_count;\n         let mut min_ts = self.min_ts;\n         let mut max_ts = self.max_ts;\n-        if !self.pending.is_empty() {\n+        if  /* ~ changed by cargo-mutants ~ */self.pending.is_empty() {\n             let compressed = compress_frame(&self.pending, self.cfg.zstd_level)?;\n             entries.push(FrameIndexEntry {\n                 original_offset: original_off,\n                 original_size: self.pending.len() as u64,\n                 compressed_offset: body.len() as u64,\n                 compressed_size: compressed.len() as u64,\n             });\n             ts_entries.push(TsEntry {\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::encode",
+      "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 213
+        },
+        "start": {
+          "column": 5,
+          "line": 159
+        }
+      }
+    },
+    "genre": "UnaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:172:12: delete ! in ChunkWriter::encode",
+    "package": "s4logs-core",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 13,
+        "line": 172
+      },
+      "start": {
+        "column": 12,
+        "line": 172
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace += with -= in ChunkWriter::encode\n@@ -176,17 +176,17 @@\n                 original_size: self.pending.len() as u64,\n                 compressed_offset: body.len() as u64,\n                 compressed_size: compressed.len() as u64,\n             });\n             ts_entries.push(TsEntry {\n                 min_ts: self.pending_min_ts,\n                 max_ts: self.pending_max_ts,\n             });\n-            original_off += self.pending.len() as u64;\n+            original_off -= /* ~ changed by cargo-mutants ~ */ self.pending.len() as u64;\n             body.extend_from_slice(&compressed);\n             record_count += self.pending_records;\n             min_ts = min_ts.min(self.pending_min_ts);\n             max_ts = max_ts.max(self.pending_max_ts);\n         }\n         if entries.is_empty() {\n             return Ok(None);\n         }\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::encode",
+      "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 213
+        },
+        "start": {
+          "column": 5,
+          "line": 159
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:184:26: replace += with -= in ChunkWriter::encode",
+    "package": "s4logs-core",
+    "replacement": "-=",
+    "span": {
+      "end": {
+        "column": 28,
+        "line": 184
+      },
+      "start": {
+        "column": 26,
+        "line": 184
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace += with *= in ChunkWriter::encode\n@@ -176,17 +176,17 @@\n                 original_size: self.pending.len() as u64,\n                 compressed_offset: body.len() as u64,\n                 compressed_size: compressed.len() as u64,\n             });\n             ts_entries.push(TsEntry {\n                 min_ts: self.pending_min_ts,\n                 max_ts: self.pending_max_ts,\n             });\n-            original_off += self.pending.len() as u64;\n+            original_off *= /* ~ changed by cargo-mutants ~ */ self.pending.len() as u64;\n             body.extend_from_slice(&compressed);\n             record_count += self.pending_records;\n             min_ts = min_ts.min(self.pending_min_ts);\n             max_ts = max_ts.max(self.pending_max_ts);\n         }\n         if entries.is_empty() {\n             return Ok(None);\n         }\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::encode",
+      "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 213
+        },
+        "start": {
+          "column": 5,
+          "line": 159
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:184:26: replace += with *= in ChunkWriter::encode",
+    "package": "s4logs-core",
+    "replacement": "*=",
+    "span": {
+      "end": {
+        "column": 28,
+        "line": 184
+      },
+      "start": {
+        "column": 26,
+        "line": 184
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace += with -= in ChunkWriter::encode\n@@ -178,17 +178,17 @@\n                 compressed_size: compressed.len() as u64,\n             });\n             ts_entries.push(TsEntry {\n                 min_ts: self.pending_min_ts,\n                 max_ts: self.pending_max_ts,\n             });\n             original_off += self.pending.len() as u64;\n             body.extend_from_slice(&compressed);\n-            record_count += self.pending_records;\n+            record_count -= /* ~ changed by cargo-mutants ~ */ self.pending_records;\n             min_ts = min_ts.min(self.pending_min_ts);\n             max_ts = max_ts.max(self.pending_max_ts);\n         }\n         if entries.is_empty() {\n             return Ok(None);\n         }\n         let body = Bytes::from(body);\n         let crc = crc32c::crc32c(&body);\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::encode",
+      "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 213
+        },
+        "start": {
+          "column": 5,
+          "line": 159
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:186:26: replace += with -= in ChunkWriter::encode",
+    "package": "s4logs-core",
+    "replacement": "-=",
+    "span": {
+      "end": {
+        "column": 28,
+        "line": 186
+      },
+      "start": {
+        "column": 26,
+        "line": 186
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace += with *= in ChunkWriter::encode\n@@ -178,17 +178,17 @@\n                 compressed_size: compressed.len() as u64,\n             });\n             ts_entries.push(TsEntry {\n                 min_ts: self.pending_min_ts,\n                 max_ts: self.pending_max_ts,\n             });\n             original_off += self.pending.len() as u64;\n             body.extend_from_slice(&compressed);\n-            record_count += self.pending_records;\n+            record_count *= /* ~ changed by cargo-mutants ~ */ self.pending_records;\n             min_ts = min_ts.min(self.pending_min_ts);\n             max_ts = max_ts.max(self.pending_max_ts);\n         }\n         if entries.is_empty() {\n             return Ok(None);\n         }\n         let body = Bytes::from(body);\n         let crc = crc32c::crc32c(&body);\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "ChunkWriter::encode",
+      "return_type": "-> Result<Option<EncodedChunk>, ChunkError>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 213
+        },
+        "start": {
+          "column": 5,
+          "line": 159
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/chunk.rs:186:26: replace += with *= in ChunkWriter::encode",
+    "package": "s4logs-core",
+    "replacement": "*=",
+    "span": {
+      "end": {
+        "column": 28,
+        "line": 186
+      },
+      "start": {
+        "column": 26,
+        "line": 186
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace compress_frame -> std::io::Result<Vec<u8>> with Ok(vec![])\n@@ -210,22 +210,17 @@\n             crc32c: crc,\n             body,\n         }))\n     }\n }\n \n /// Compress one standalone standard zstd frame with content checksum.\n fn compress_frame(input: &[u8], level: i32) -> std::io::Result<Vec<u8>> {\n-    let mut enc =\n-        zstd::stream::write::Encoder::new(Vec::with_capacity(input.len() / 4 + 64), level)?;\n-    enc.include_checksum(true)?;\n-    enc.set_pledged_src_size(Some(input.len() as u64))?;\n-    enc.write_all(input)?;\n-    enc.finish()\n+    Ok(vec![]) /* ~ changed by cargo-mutants ~ */\n }\n \n #[cfg(test)]\n #[allow(clippy::unwrap_used)]\n mod tests {\n     use super::*;\n \n     fn rec(ts: i64, msg: &str) -> LogRecord {\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "compress_frame",
+      "return_type": "-> std::io::Result<Vec<u8>>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 224
+        },
+        "start": {
+          "column": 1,
+          "line": 216
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/chunk.rs:218:5: replace compress_frame -> std::io::Result<Vec<u8>> with Ok(vec![])",
+    "package": "s4logs-core",
+    "replacement": "Ok(vec![])",
+    "span": {
+      "end": {
+        "column": 17,
+        "line": 223
+      },
+      "start": {
+        "column": 5,
+        "line": 218
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace compress_frame -> std::io::Result<Vec<u8>> with Ok(vec![0])\n@@ -210,22 +210,17 @@\n             crc32c: crc,\n             body,\n         }))\n     }\n }\n \n /// Compress one standalone standard zstd frame with content checksum.\n fn compress_frame(input: &[u8], level: i32) -> std::io::Result<Vec<u8>> {\n-    let mut enc =\n-        zstd::stream::write::Encoder::new(Vec::with_capacity(input.len() / 4 + 64), level)?;\n-    enc.include_checksum(true)?;\n-    enc.set_pledged_src_size(Some(input.len() as u64))?;\n-    enc.write_all(input)?;\n-    enc.finish()\n+    Ok(vec![0]) /* ~ changed by cargo-mutants ~ */\n }\n \n #[cfg(test)]\n #[allow(clippy::unwrap_used)]\n mod tests {\n     use super::*;\n \n     fn rec(ts: i64, msg: &str) -> LogRecord {\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "compress_frame",
+      "return_type": "-> std::io::Result<Vec<u8>>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 224
+        },
+        "start": {
+          "column": 1,
+          "line": 216
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/chunk.rs:218:5: replace compress_frame -> std::io::Result<Vec<u8>> with Ok(vec![0])",
+    "package": "s4logs-core",
+    "replacement": "Ok(vec![0])",
+    "span": {
+      "end": {
+        "column": 17,
+        "line": 223
+      },
+      "start": {
+        "column": 5,
+        "line": 218
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/chunk.rs\n+++ replace compress_frame -> std::io::Result<Vec<u8>> with Ok(vec![1])\n@@ -210,22 +210,17 @@\n             crc32c: crc,\n             body,\n         }))\n     }\n }\n \n /// Compress one standalone standard zstd frame with content checksum.\n fn compress_frame(input: &[u8], level: i32) -> std::io::Result<Vec<u8>> {\n-    let mut enc =\n-        zstd::stream::write::Encoder::new(Vec::with_capacity(input.len() / 4 + 64), level)?;\n-    enc.include_checksum(true)?;\n-    enc.set_pledged_src_size(Some(input.len() as u64))?;\n-    enc.write_all(input)?;\n-    enc.finish()\n+    Ok(vec![1]) /* ~ changed by cargo-mutants ~ */\n }\n \n #[cfg(test)]\n #[allow(clippy::unwrap_used)]\n mod tests {\n     use super::*;\n \n     fn rec(ts: i64, msg: &str) -> LogRecord {\n",
+    "file": "crates/s4logs-core/src/chunk.rs",
+    "function": {
+      "function_name": "compress_frame",
+      "return_type": "-> std::io::Result<Vec<u8>>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 224
+        },
+        "start": {
+          "column": 1,
+          "line": 216
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/chunk.rs:218:5: replace compress_frame -> std::io::Result<Vec<u8>> with Ok(vec![1])",
+    "package": "s4logs-core",
+    "replacement": "Ok(vec![1])",
+    "span": {
+      "end": {
+        "column": 17,
+        "line": 223
+      },
+      "start": {
+        "column": 5,
+        "line": 218
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace TimeRange::overlaps -> bool with true\n@@ -13,17 +13,17 @@\n #[derive(Debug, Clone, Copy, PartialEq, Eq)]\n pub struct TimeRange {\n     pub from_ms: i64,\n     pub to_ms_exclusive: i64,\n }\n \n impl TimeRange {\n     pub fn overlaps(&self, min_ts: i64, max_ts: i64) -> bool {\n-        min_ts < self.to_ms_exclusive && max_ts >= self.from_ms\n+        true /* ~ changed by cargo-mutants ~ */\n     }\n }\n \n #[derive(Debug, Error)]\n #[non_exhaustive]\n pub enum ReadError {\n     #[error(\"S4IX has {frames} entries but S4LT has {ts_frames} — sidecars out of sync\")]\n     IndexMismatch { frames: usize, ts_frames: usize },\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "TimeRange::overlaps",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 22
+        },
+        "start": {
+          "column": 5,
+          "line": 20
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:21:9: replace TimeRange::overlaps -> bool with true",
+    "package": "s4logs-core",
+    "replacement": "true",
+    "span": {
+      "end": {
+        "column": 64,
+        "line": 21
+      },
+      "start": {
+        "column": 9,
+        "line": 21
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace TimeRange::overlaps -> bool with false\n@@ -13,17 +13,17 @@\n #[derive(Debug, Clone, Copy, PartialEq, Eq)]\n pub struct TimeRange {\n     pub from_ms: i64,\n     pub to_ms_exclusive: i64,\n }\n \n impl TimeRange {\n     pub fn overlaps(&self, min_ts: i64, max_ts: i64) -> bool {\n-        min_ts < self.to_ms_exclusive && max_ts >= self.from_ms\n+        false /* ~ changed by cargo-mutants ~ */\n     }\n }\n \n #[derive(Debug, Error)]\n #[non_exhaustive]\n pub enum ReadError {\n     #[error(\"S4IX has {frames} entries but S4LT has {ts_frames} — sidecars out of sync\")]\n     IndexMismatch { frames: usize, ts_frames: usize },\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "TimeRange::overlaps",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 22
+        },
+        "start": {
+          "column": 5,
+          "line": 20
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:21:9: replace TimeRange::overlaps -> bool with false",
+    "package": "s4logs-core",
+    "replacement": "false",
+    "span": {
+      "end": {
+        "column": 64,
+        "line": 21
+      },
+      "start": {
+        "column": 9,
+        "line": 21
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace && with || in TimeRange::overlaps\n@@ -13,17 +13,17 @@\n #[derive(Debug, Clone, Copy, PartialEq, Eq)]\n pub struct TimeRange {\n     pub from_ms: i64,\n     pub to_ms_exclusive: i64,\n }\n \n impl TimeRange {\n     pub fn overlaps(&self, min_ts: i64, max_ts: i64) -> bool {\n-        min_ts < self.to_ms_exclusive && max_ts >= self.from_ms\n+        min_ts < self.to_ms_exclusive || /* ~ changed by cargo-mutants ~ */ max_ts >= self.from_ms\n     }\n }\n \n #[derive(Debug, Error)]\n #[non_exhaustive]\n pub enum ReadError {\n     #[error(\"S4IX has {frames} entries but S4LT has {ts_frames} — sidecars out of sync\")]\n     IndexMismatch { frames: usize, ts_frames: usize },\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "TimeRange::overlaps",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 22
+        },
+        "start": {
+          "column": 5,
+          "line": 20
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:21:39: replace && with || in TimeRange::overlaps",
+    "package": "s4logs-core",
+    "replacement": "||",
+    "span": {
+      "end": {
+        "column": 41,
+        "line": 21
+      },
+      "start": {
+        "column": 39,
+        "line": 21
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace < with == in TimeRange::overlaps\n@@ -13,17 +13,17 @@\n #[derive(Debug, Clone, Copy, PartialEq, Eq)]\n pub struct TimeRange {\n     pub from_ms: i64,\n     pub to_ms_exclusive: i64,\n }\n \n impl TimeRange {\n     pub fn overlaps(&self, min_ts: i64, max_ts: i64) -> bool {\n-        min_ts < self.to_ms_exclusive && max_ts >= self.from_ms\n+        min_ts == /* ~ changed by cargo-mutants ~ */ self.to_ms_exclusive && max_ts >= self.from_ms\n     }\n }\n \n #[derive(Debug, Error)]\n #[non_exhaustive]\n pub enum ReadError {\n     #[error(\"S4IX has {frames} entries but S4LT has {ts_frames} — sidecars out of sync\")]\n     IndexMismatch { frames: usize, ts_frames: usize },\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "TimeRange::overlaps",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 22
+        },
+        "start": {
+          "column": 5,
+          "line": 20
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:21:16: replace < with == in TimeRange::overlaps",
+    "package": "s4logs-core",
+    "replacement": "==",
+    "span": {
+      "end": {
+        "column": 17,
+        "line": 21
+      },
+      "start": {
+        "column": 16,
+        "line": 21
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace < with > in TimeRange::overlaps\n@@ -13,17 +13,17 @@\n #[derive(Debug, Clone, Copy, PartialEq, Eq)]\n pub struct TimeRange {\n     pub from_ms: i64,\n     pub to_ms_exclusive: i64,\n }\n \n impl TimeRange {\n     pub fn overlaps(&self, min_ts: i64, max_ts: i64) -> bool {\n-        min_ts < self.to_ms_exclusive && max_ts >= self.from_ms\n+        min_ts > /* ~ changed by cargo-mutants ~ */ self.to_ms_exclusive && max_ts >= self.from_ms\n     }\n }\n \n #[derive(Debug, Error)]\n #[non_exhaustive]\n pub enum ReadError {\n     #[error(\"S4IX has {frames} entries but S4LT has {ts_frames} — sidecars out of sync\")]\n     IndexMismatch { frames: usize, ts_frames: usize },\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "TimeRange::overlaps",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 22
+        },
+        "start": {
+          "column": 5,
+          "line": 20
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:21:16: replace < with > in TimeRange::overlaps",
+    "package": "s4logs-core",
+    "replacement": ">",
+    "span": {
+      "end": {
+        "column": 17,
+        "line": 21
+      },
+      "start": {
+        "column": 16,
+        "line": 21
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace < with <= in TimeRange::overlaps\n@@ -13,17 +13,17 @@\n #[derive(Debug, Clone, Copy, PartialEq, Eq)]\n pub struct TimeRange {\n     pub from_ms: i64,\n     pub to_ms_exclusive: i64,\n }\n \n impl TimeRange {\n     pub fn overlaps(&self, min_ts: i64, max_ts: i64) -> bool {\n-        min_ts < self.to_ms_exclusive && max_ts >= self.from_ms\n+        min_ts <= /* ~ changed by cargo-mutants ~ */ self.to_ms_exclusive && max_ts >= self.from_ms\n     }\n }\n \n #[derive(Debug, Error)]\n #[non_exhaustive]\n pub enum ReadError {\n     #[error(\"S4IX has {frames} entries but S4LT has {ts_frames} — sidecars out of sync\")]\n     IndexMismatch { frames: usize, ts_frames: usize },\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "TimeRange::overlaps",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 22
+        },
+        "start": {
+          "column": 5,
+          "line": 20
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:21:16: replace < with <= in TimeRange::overlaps",
+    "package": "s4logs-core",
+    "replacement": "<=",
+    "span": {
+      "end": {
+        "column": 17,
+        "line": 21
+      },
+      "start": {
+        "column": 16,
+        "line": 21
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace >= with < in TimeRange::overlaps\n@@ -13,17 +13,17 @@\n #[derive(Debug, Clone, Copy, PartialEq, Eq)]\n pub struct TimeRange {\n     pub from_ms: i64,\n     pub to_ms_exclusive: i64,\n }\n \n impl TimeRange {\n     pub fn overlaps(&self, min_ts: i64, max_ts: i64) -> bool {\n-        min_ts < self.to_ms_exclusive && max_ts >= self.from_ms\n+        min_ts < self.to_ms_exclusive && max_ts < /* ~ changed by cargo-mutants ~ */ self.from_ms\n     }\n }\n \n #[derive(Debug, Error)]\n #[non_exhaustive]\n pub enum ReadError {\n     #[error(\"S4IX has {frames} entries but S4LT has {ts_frames} — sidecars out of sync\")]\n     IndexMismatch { frames: usize, ts_frames: usize },\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "TimeRange::overlaps",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 22
+        },
+        "start": {
+          "column": 5,
+          "line": 20
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:21:49: replace >= with < in TimeRange::overlaps",
+    "package": "s4logs-core",
+    "replacement": "<",
+    "span": {
+      "end": {
+        "column": 51,
+        "line": 21
+      },
+      "start": {
+        "column": 49,
+        "line": 21
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace frames_overlapping -> Result<Vec<FrameSpan>, ReadError> with Ok(vec![])\n@@ -46,35 +46,17 @@\n }\n \n /// Frames whose S4LT timestamp range overlaps `range`, in object order.\n pub fn frames_overlapping(\n     frame_index: &FrameIndex,\n     ts_index: &TsIndex,\n     range: &TimeRange,\n ) -> Result<Vec<FrameSpan>, ReadError> {\n-    if frame_index.entries.len() != ts_index.entries.len() {\n-        return Err(ReadError::IndexMismatch {\n-            frames: frame_index.entries.len(),\n-            ts_frames: ts_index.entries.len(),\n-        });\n-    }\n-    Ok(frame_index\n-        .entries\n-        .iter()\n-        .zip(ts_index.entries.iter())\n-        .enumerate()\n-        .filter(|(_, (_, ts))| range.overlaps(ts.min_ts, ts.max_ts))\n-        .map(|(i, (fe, _))| FrameSpan {\n-            frame_idx: i,\n-            byte_start: fe.compressed_offset,\n-            byte_end_exclusive: fe.compressed_end(),\n-            original_size: fe.original_size,\n-        })\n-        .collect())\n+    Ok(vec![]) /* ~ changed by cargo-mutants ~ */\n }\n \n /// Merge spans whose gap is ≤ `max_gap_bytes` into fewer Range GETs.\n /// Input must be in object order (as produced by [`frames_overlapping`]).\n /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.\n pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {\n     let mut out: Vec<(u64, u64, u64)> = Vec::new();\n     for s in spans {\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "frames_overlapping",
+      "return_type": "-> Result<Vec<FrameSpan>, ReadError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 73
+        },
+        "start": {
+          "column": 1,
+          "line": 48
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:54:5: replace frames_overlapping -> Result<Vec<FrameSpan>, ReadError> with Ok(vec![])",
+    "package": "s4logs-core",
+    "replacement": "Ok(vec![])",
+    "span": {
+      "end": {
+        "column": 20,
+        "line": 72
+      },
+      "start": {
+        "column": 5,
+        "line": 54
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace frames_overlapping -> Result<Vec<FrameSpan>, ReadError> with Ok(vec![Default::default()])\n@@ -46,35 +46,17 @@\n }\n \n /// Frames whose S4LT timestamp range overlaps `range`, in object order.\n pub fn frames_overlapping(\n     frame_index: &FrameIndex,\n     ts_index: &TsIndex,\n     range: &TimeRange,\n ) -> Result<Vec<FrameSpan>, ReadError> {\n-    if frame_index.entries.len() != ts_index.entries.len() {\n-        return Err(ReadError::IndexMismatch {\n-            frames: frame_index.entries.len(),\n-            ts_frames: ts_index.entries.len(),\n-        });\n-    }\n-    Ok(frame_index\n-        .entries\n-        .iter()\n-        .zip(ts_index.entries.iter())\n-        .enumerate()\n-        .filter(|(_, (_, ts))| range.overlaps(ts.min_ts, ts.max_ts))\n-        .map(|(i, (fe, _))| FrameSpan {\n-            frame_idx: i,\n-            byte_start: fe.compressed_offset,\n-            byte_end_exclusive: fe.compressed_end(),\n-            original_size: fe.original_size,\n-        })\n-        .collect())\n+    Ok(vec![Default::default()]) /* ~ changed by cargo-mutants ~ */\n }\n \n /// Merge spans whose gap is ≤ `max_gap_bytes` into fewer Range GETs.\n /// Input must be in object order (as produced by [`frames_overlapping`]).\n /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.\n pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {\n     let mut out: Vec<(u64, u64, u64)> = Vec::new();\n     for s in spans {\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "frames_overlapping",
+      "return_type": "-> Result<Vec<FrameSpan>, ReadError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 73
+        },
+        "start": {
+          "column": 1,
+          "line": 48
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:54:5: replace frames_overlapping -> Result<Vec<FrameSpan>, ReadError> with Ok(vec![Default::default()])",
+    "package": "s4logs-core",
+    "replacement": "Ok(vec![Default::default()])",
+    "span": {
+      "end": {
+        "column": 20,
+        "line": 72
+      },
+      "start": {
+        "column": 5,
+        "line": 54
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace != with == in frames_overlapping\n@@ -46,17 +46,17 @@\n }\n \n /// Frames whose S4LT timestamp range overlaps `range`, in object order.\n pub fn frames_overlapping(\n     frame_index: &FrameIndex,\n     ts_index: &TsIndex,\n     range: &TimeRange,\n ) -> Result<Vec<FrameSpan>, ReadError> {\n-    if frame_index.entries.len() != ts_index.entries.len() {\n+    if frame_index.entries.len() == /* ~ changed by cargo-mutants ~ */ ts_index.entries.len() {\n         return Err(ReadError::IndexMismatch {\n             frames: frame_index.entries.len(),\n             ts_frames: ts_index.entries.len(),\n         });\n     }\n     Ok(frame_index\n         .entries\n         .iter()\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "frames_overlapping",
+      "return_type": "-> Result<Vec<FrameSpan>, ReadError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 73
+        },
+        "start": {
+          "column": 1,
+          "line": 48
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:54:34: replace != with == in frames_overlapping",
+    "package": "s4logs-core",
+    "replacement": "==",
+    "span": {
+      "end": {
+        "column": 36,
+        "line": 54
+      },
+      "start": {
+        "column": 34,
+        "line": 54
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![]\n@@ -71,27 +71,17 @@\n         })\n         .collect())\n }\n \n /// Merge spans whose gap is ≤ `max_gap_bytes` into fewer Range GETs.\n /// Input must be in object order (as produced by [`frames_overlapping`]).\n /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.\n pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {\n-    let mut out: Vec<(u64, u64, u64)> = Vec::new();\n-    for s in spans {\n-        match out.last_mut() {\n-            Some((_, end, orig)) if s.byte_start.saturating_sub(*end) <= max_gap_bytes => {\n-                *end = s.byte_end_exclusive;\n-                *orig += s.original_size;\n-            }\n-            _ => out.push((s.byte_start, s.byte_end_exclusive, s.original_size)),\n-        }\n-    }\n-    out\n+    vec![] /* ~ changed by cargo-mutants ~ */\n }\n \n /// How much slack the bomb cap allows over the sidecar-claimed size\n /// (mirrors s4 `cpu_zstd.rs`).\n pub const BOMB_SLACK_BYTES: u64 = 1024;\n const BOOTSTRAP_CAPACITY: usize = 1 << 20;\n /// Hard ceiling on a single object's decompressed size (64 GiB). A claimed\n /// `expected_original` above this is treated as a hostile sidecar — real log\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "coalesce_spans",
+      "return_type": "-> Vec<(u64, u64, u64)>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 90
+        },
+        "start": {
+          "column": 1,
+          "line": 75
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![]",
+    "package": "s4logs-core",
+    "replacement": "vec![]",
+    "span": {
+      "end": {
+        "column": 8,
+        "line": 89
+      },
+      "start": {
+        "column": 5,
+        "line": 79
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(0, 0, 0)]\n@@ -71,27 +71,17 @@\n         })\n         .collect())\n }\n \n /// Merge spans whose gap is ≤ `max_gap_bytes` into fewer Range GETs.\n /// Input must be in object order (as produced by [`frames_overlapping`]).\n /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.\n pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {\n-    let mut out: Vec<(u64, u64, u64)> = Vec::new();\n-    for s in spans {\n-        match out.last_mut() {\n-            Some((_, end, orig)) if s.byte_start.saturating_sub(*end) <= max_gap_bytes => {\n-                *end = s.byte_end_exclusive;\n-                *orig += s.original_size;\n-            }\n-            _ => out.push((s.byte_start, s.byte_end_exclusive, s.original_size)),\n-        }\n-    }\n-    out\n+    vec![(0, 0, 0)] /* ~ changed by cargo-mutants ~ */\n }\n \n /// How much slack the bomb cap allows over the sidecar-claimed size\n /// (mirrors s4 `cpu_zstd.rs`).\n pub const BOMB_SLACK_BYTES: u64 = 1024;\n const BOOTSTRAP_CAPACITY: usize = 1 << 20;\n /// Hard ceiling on a single object's decompressed size (64 GiB). A claimed\n /// `expected_original` above this is treated as a hostile sidecar — real log\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "coalesce_spans",
+      "return_type": "-> Vec<(u64, u64, u64)>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 90
+        },
+        "start": {
+          "column": 1,
+          "line": 75
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(0, 0, 0)]",
+    "package": "s4logs-core",
+    "replacement": "vec![(0, 0, 0)]",
+    "span": {
+      "end": {
+        "column": 8,
+        "line": 89
+      },
+      "start": {
+        "column": 5,
+        "line": 79
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(0, 0, 1)]\n@@ -71,27 +71,17 @@\n         })\n         .collect())\n }\n \n /// Merge spans whose gap is ≤ `max_gap_bytes` into fewer Range GETs.\n /// Input must be in object order (as produced by [`frames_overlapping`]).\n /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.\n pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {\n-    let mut out: Vec<(u64, u64, u64)> = Vec::new();\n-    for s in spans {\n-        match out.last_mut() {\n-            Some((_, end, orig)) if s.byte_start.saturating_sub(*end) <= max_gap_bytes => {\n-                *end = s.byte_end_exclusive;\n-                *orig += s.original_size;\n-            }\n-            _ => out.push((s.byte_start, s.byte_end_exclusive, s.original_size)),\n-        }\n-    }\n-    out\n+    vec![(0, 0, 1)] /* ~ changed by cargo-mutants ~ */\n }\n \n /// How much slack the bomb cap allows over the sidecar-claimed size\n /// (mirrors s4 `cpu_zstd.rs`).\n pub const BOMB_SLACK_BYTES: u64 = 1024;\n const BOOTSTRAP_CAPACITY: usize = 1 << 20;\n /// Hard ceiling on a single object's decompressed size (64 GiB). A claimed\n /// `expected_original` above this is treated as a hostile sidecar — real log\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "coalesce_spans",
+      "return_type": "-> Vec<(u64, u64, u64)>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 90
+        },
+        "start": {
+          "column": 1,
+          "line": 75
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(0, 0, 1)]",
+    "package": "s4logs-core",
+    "replacement": "vec![(0, 0, 1)]",
+    "span": {
+      "end": {
+        "column": 8,
+        "line": 89
+      },
+      "start": {
+        "column": 5,
+        "line": 79
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(0, 1, 0)]\n@@ -71,27 +71,17 @@\n         })\n         .collect())\n }\n \n /// Merge spans whose gap is ≤ `max_gap_bytes` into fewer Range GETs.\n /// Input must be in object order (as produced by [`frames_overlapping`]).\n /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.\n pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {\n-    let mut out: Vec<(u64, u64, u64)> = Vec::new();\n-    for s in spans {\n-        match out.last_mut() {\n-            Some((_, end, orig)) if s.byte_start.saturating_sub(*end) <= max_gap_bytes => {\n-                *end = s.byte_end_exclusive;\n-                *orig += s.original_size;\n-            }\n-            _ => out.push((s.byte_start, s.byte_end_exclusive, s.original_size)),\n-        }\n-    }\n-    out\n+    vec![(0, 1, 0)] /* ~ changed by cargo-mutants ~ */\n }\n \n /// How much slack the bomb cap allows over the sidecar-claimed size\n /// (mirrors s4 `cpu_zstd.rs`).\n pub const BOMB_SLACK_BYTES: u64 = 1024;\n const BOOTSTRAP_CAPACITY: usize = 1 << 20;\n /// Hard ceiling on a single object's decompressed size (64 GiB). A claimed\n /// `expected_original` above this is treated as a hostile sidecar — real log\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "coalesce_spans",
+      "return_type": "-> Vec<(u64, u64, u64)>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 90
+        },
+        "start": {
+          "column": 1,
+          "line": 75
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(0, 1, 0)]",
+    "package": "s4logs-core",
+    "replacement": "vec![(0, 1, 0)]",
+    "span": {
+      "end": {
+        "column": 8,
+        "line": 89
+      },
+      "start": {
+        "column": 5,
+        "line": 79
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(0, 1, 1)]\n@@ -71,27 +71,17 @@\n         })\n         .collect())\n }\n \n /// Merge spans whose gap is ≤ `max_gap_bytes` into fewer Range GETs.\n /// Input must be in object order (as produced by [`frames_overlapping`]).\n /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.\n pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {\n-    let mut out: Vec<(u64, u64, u64)> = Vec::new();\n-    for s in spans {\n-        match out.last_mut() {\n-            Some((_, end, orig)) if s.byte_start.saturating_sub(*end) <= max_gap_bytes => {\n-                *end = s.byte_end_exclusive;\n-                *orig += s.original_size;\n-            }\n-            _ => out.push((s.byte_start, s.byte_end_exclusive, s.original_size)),\n-        }\n-    }\n-    out\n+    vec![(0, 1, 1)] /* ~ changed by cargo-mutants ~ */\n }\n \n /// How much slack the bomb cap allows over the sidecar-claimed size\n /// (mirrors s4 `cpu_zstd.rs`).\n pub const BOMB_SLACK_BYTES: u64 = 1024;\n const BOOTSTRAP_CAPACITY: usize = 1 << 20;\n /// Hard ceiling on a single object's decompressed size (64 GiB). A claimed\n /// `expected_original` above this is treated as a hostile sidecar — real log\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "coalesce_spans",
+      "return_type": "-> Vec<(u64, u64, u64)>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 90
+        },
+        "start": {
+          "column": 1,
+          "line": 75
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(0, 1, 1)]",
+    "package": "s4logs-core",
+    "replacement": "vec![(0, 1, 1)]",
+    "span": {
+      "end": {
+        "column": 8,
+        "line": 89
+      },
+      "start": {
+        "column": 5,
+        "line": 79
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(1, 0, 0)]\n@@ -71,27 +71,17 @@\n         })\n         .collect())\n }\n \n /// Merge spans whose gap is ≤ `max_gap_bytes` into fewer Range GETs.\n /// Input must be in object order (as produced by [`frames_overlapping`]).\n /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.\n pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {\n-    let mut out: Vec<(u64, u64, u64)> = Vec::new();\n-    for s in spans {\n-        match out.last_mut() {\n-            Some((_, end, orig)) if s.byte_start.saturating_sub(*end) <= max_gap_bytes => {\n-                *end = s.byte_end_exclusive;\n-                *orig += s.original_size;\n-            }\n-            _ => out.push((s.byte_start, s.byte_end_exclusive, s.original_size)),\n-        }\n-    }\n-    out\n+    vec![(1, 0, 0)] /* ~ changed by cargo-mutants ~ */\n }\n \n /// How much slack the bomb cap allows over the sidecar-claimed size\n /// (mirrors s4 `cpu_zstd.rs`).\n pub const BOMB_SLACK_BYTES: u64 = 1024;\n const BOOTSTRAP_CAPACITY: usize = 1 << 20;\n /// Hard ceiling on a single object's decompressed size (64 GiB). A claimed\n /// `expected_original` above this is treated as a hostile sidecar — real log\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "coalesce_spans",
+      "return_type": "-> Vec<(u64, u64, u64)>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 90
+        },
+        "start": {
+          "column": 1,
+          "line": 75
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(1, 0, 0)]",
+    "package": "s4logs-core",
+    "replacement": "vec![(1, 0, 0)]",
+    "span": {
+      "end": {
+        "column": 8,
+        "line": 89
+      },
+      "start": {
+        "column": 5,
+        "line": 79
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(1, 0, 1)]\n@@ -71,27 +71,17 @@\n         })\n         .collect())\n }\n \n /// Merge spans whose gap is ≤ `max_gap_bytes` into fewer Range GETs.\n /// Input must be in object order (as produced by [`frames_overlapping`]).\n /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.\n pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {\n-    let mut out: Vec<(u64, u64, u64)> = Vec::new();\n-    for s in spans {\n-        match out.last_mut() {\n-            Some((_, end, orig)) if s.byte_start.saturating_sub(*end) <= max_gap_bytes => {\n-                *end = s.byte_end_exclusive;\n-                *orig += s.original_size;\n-            }\n-            _ => out.push((s.byte_start, s.byte_end_exclusive, s.original_size)),\n-        }\n-    }\n-    out\n+    vec![(1, 0, 1)] /* ~ changed by cargo-mutants ~ */\n }\n \n /// How much slack the bomb cap allows over the sidecar-claimed size\n /// (mirrors s4 `cpu_zstd.rs`).\n pub const BOMB_SLACK_BYTES: u64 = 1024;\n const BOOTSTRAP_CAPACITY: usize = 1 << 20;\n /// Hard ceiling on a single object's decompressed size (64 GiB). A claimed\n /// `expected_original` above this is treated as a hostile sidecar — real log\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "coalesce_spans",
+      "return_type": "-> Vec<(u64, u64, u64)>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 90
+        },
+        "start": {
+          "column": 1,
+          "line": 75
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(1, 0, 1)]",
+    "package": "s4logs-core",
+    "replacement": "vec![(1, 0, 1)]",
+    "span": {
+      "end": {
+        "column": 8,
+        "line": 89
+      },
+      "start": {
+        "column": 5,
+        "line": 79
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(1, 1, 0)]\n@@ -71,27 +71,17 @@\n         })\n         .collect())\n }\n \n /// Merge spans whose gap is ≤ `max_gap_bytes` into fewer Range GETs.\n /// Input must be in object order (as produced by [`frames_overlapping`]).\n /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.\n pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {\n-    let mut out: Vec<(u64, u64, u64)> = Vec::new();\n-    for s in spans {\n-        match out.last_mut() {\n-            Some((_, end, orig)) if s.byte_start.saturating_sub(*end) <= max_gap_bytes => {\n-                *end = s.byte_end_exclusive;\n-                *orig += s.original_size;\n-            }\n-            _ => out.push((s.byte_start, s.byte_end_exclusive, s.original_size)),\n-        }\n-    }\n-    out\n+    vec![(1, 1, 0)] /* ~ changed by cargo-mutants ~ */\n }\n \n /// How much slack the bomb cap allows over the sidecar-claimed size\n /// (mirrors s4 `cpu_zstd.rs`).\n pub const BOMB_SLACK_BYTES: u64 = 1024;\n const BOOTSTRAP_CAPACITY: usize = 1 << 20;\n /// Hard ceiling on a single object's decompressed size (64 GiB). A claimed\n /// `expected_original` above this is treated as a hostile sidecar — real log\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "coalesce_spans",
+      "return_type": "-> Vec<(u64, u64, u64)>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 90
+        },
+        "start": {
+          "column": 1,
+          "line": 75
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(1, 1, 0)]",
+    "package": "s4logs-core",
+    "replacement": "vec![(1, 1, 0)]",
+    "span": {
+      "end": {
+        "column": 8,
+        "line": 89
+      },
+      "start": {
+        "column": 5,
+        "line": 79
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(1, 1, 1)]\n@@ -71,27 +71,17 @@\n         })\n         .collect())\n }\n \n /// Merge spans whose gap is ≤ `max_gap_bytes` into fewer Range GETs.\n /// Input must be in object order (as produced by [`frames_overlapping`]).\n /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.\n pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {\n-    let mut out: Vec<(u64, u64, u64)> = Vec::new();\n-    for s in spans {\n-        match out.last_mut() {\n-            Some((_, end, orig)) if s.byte_start.saturating_sub(*end) <= max_gap_bytes => {\n-                *end = s.byte_end_exclusive;\n-                *orig += s.original_size;\n-            }\n-            _ => out.push((s.byte_start, s.byte_end_exclusive, s.original_size)),\n-        }\n-    }\n-    out\n+    vec![(1, 1, 1)] /* ~ changed by cargo-mutants ~ */\n }\n \n /// How much slack the bomb cap allows over the sidecar-claimed size\n /// (mirrors s4 `cpu_zstd.rs`).\n pub const BOMB_SLACK_BYTES: u64 = 1024;\n const BOOTSTRAP_CAPACITY: usize = 1 << 20;\n /// Hard ceiling on a single object's decompressed size (64 GiB). A claimed\n /// `expected_original` above this is treated as a hostile sidecar — real log\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "coalesce_spans",
+      "return_type": "-> Vec<(u64, u64, u64)>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 90
+        },
+        "start": {
+          "column": 1,
+          "line": 75
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:79:5: replace coalesce_spans -> Vec<(u64, u64, u64)> with vec![(1, 1, 1)]",
+    "package": "s4logs-core",
+    "replacement": "vec![(1, 1, 1)]",
+    "span": {
+      "end": {
+        "column": 8,
+        "line": 89
+      },
+      "start": {
+        "column": 5,
+        "line": 79
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace match guard s.byte_start.saturating_sub(*end) <= max_gap_bytes with true in coalesce_spans\n@@ -74,17 +74,17 @@\n \n /// Merge spans whose gap is ≤ `max_gap_bytes` into fewer Range GETs.\n /// Input must be in object order (as produced by [`frames_overlapping`]).\n /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.\n pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {\n     let mut out: Vec<(u64, u64, u64)> = Vec::new();\n     for s in spans {\n         match out.last_mut() {\n-            Some((_, end, orig)) if s.byte_start.saturating_sub(*end) <= max_gap_bytes => {\n+            Some((_, end, orig)) if true /* ~ changed by cargo-mutants ~ */ => {\n                 *end = s.byte_end_exclusive;\n                 *orig += s.original_size;\n             }\n             _ => out.push((s.byte_start, s.byte_end_exclusive, s.original_size)),\n         }\n     }\n     out\n }\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "coalesce_spans",
+      "return_type": "-> Vec<(u64, u64, u64)>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 90
+        },
+        "start": {
+          "column": 1,
+          "line": 75
+        }
+      }
+    },
+    "genre": "MatchArmGuard",
+    "name": "crates/s4logs-core/src/read.rs:82:37: replace match guard s.byte_start.saturating_sub(*end) <= max_gap_bytes with true in coalesce_spans",
+    "package": "s4logs-core",
+    "replacement": "true",
+    "span": {
+      "end": {
+        "column": 87,
+        "line": 82
+      },
+      "start": {
+        "column": 37,
+        "line": 82
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace match guard s.byte_start.saturating_sub(*end) <= max_gap_bytes with false in coalesce_spans\n@@ -74,17 +74,17 @@\n \n /// Merge spans whose gap is ≤ `max_gap_bytes` into fewer Range GETs.\n /// Input must be in object order (as produced by [`frames_overlapping`]).\n /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.\n pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {\n     let mut out: Vec<(u64, u64, u64)> = Vec::new();\n     for s in spans {\n         match out.last_mut() {\n-            Some((_, end, orig)) if s.byte_start.saturating_sub(*end) <= max_gap_bytes => {\n+            Some((_, end, orig)) if false /* ~ changed by cargo-mutants ~ */ => {\n                 *end = s.byte_end_exclusive;\n                 *orig += s.original_size;\n             }\n             _ => out.push((s.byte_start, s.byte_end_exclusive, s.original_size)),\n         }\n     }\n     out\n }\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "coalesce_spans",
+      "return_type": "-> Vec<(u64, u64, u64)>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 90
+        },
+        "start": {
+          "column": 1,
+          "line": 75
+        }
+      }
+    },
+    "genre": "MatchArmGuard",
+    "name": "crates/s4logs-core/src/read.rs:82:37: replace match guard s.byte_start.saturating_sub(*end) <= max_gap_bytes with false in coalesce_spans",
+    "package": "s4logs-core",
+    "replacement": "false",
+    "span": {
+      "end": {
+        "column": 87,
+        "line": 82
+      },
+      "start": {
+        "column": 37,
+        "line": 82
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace <= with > in coalesce_spans\n@@ -74,17 +74,17 @@\n \n /// Merge spans whose gap is ≤ `max_gap_bytes` into fewer Range GETs.\n /// Input must be in object order (as produced by [`frames_overlapping`]).\n /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.\n pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {\n     let mut out: Vec<(u64, u64, u64)> = Vec::new();\n     for s in spans {\n         match out.last_mut() {\n-            Some((_, end, orig)) if s.byte_start.saturating_sub(*end) <= max_gap_bytes => {\n+            Some((_, end, orig)) if s.byte_start.saturating_sub(*end) > /* ~ changed by cargo-mutants ~ */ max_gap_bytes => {\n                 *end = s.byte_end_exclusive;\n                 *orig += s.original_size;\n             }\n             _ => out.push((s.byte_start, s.byte_end_exclusive, s.original_size)),\n         }\n     }\n     out\n }\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "coalesce_spans",
+      "return_type": "-> Vec<(u64, u64, u64)>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 90
+        },
+        "start": {
+          "column": 1,
+          "line": 75
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:82:71: replace <= with > in coalesce_spans",
+    "package": "s4logs-core",
+    "replacement": ">",
+    "span": {
+      "end": {
+        "column": 73,
+        "line": 82
+      },
+      "start": {
+        "column": 71,
+        "line": 82
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace += with -= in coalesce_spans\n@@ -76,17 +76,17 @@\n /// Input must be in object order (as produced by [`frames_overlapping`]).\n /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.\n pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {\n     let mut out: Vec<(u64, u64, u64)> = Vec::new();\n     for s in spans {\n         match out.last_mut() {\n             Some((_, end, orig)) if s.byte_start.saturating_sub(*end) <= max_gap_bytes => {\n                 *end = s.byte_end_exclusive;\n-                *orig += s.original_size;\n+                *orig -= /* ~ changed by cargo-mutants ~ */ s.original_size;\n             }\n             _ => out.push((s.byte_start, s.byte_end_exclusive, s.original_size)),\n         }\n     }\n     out\n }\n \n /// How much slack the bomb cap allows over the sidecar-claimed size\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "coalesce_spans",
+      "return_type": "-> Vec<(u64, u64, u64)>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 90
+        },
+        "start": {
+          "column": 1,
+          "line": 75
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:84:23: replace += with -= in coalesce_spans",
+    "package": "s4logs-core",
+    "replacement": "-=",
+    "span": {
+      "end": {
+        "column": 25,
+        "line": 84
+      },
+      "start": {
+        "column": 23,
+        "line": 84
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace += with *= in coalesce_spans\n@@ -76,17 +76,17 @@\n /// Input must be in object order (as produced by [`frames_overlapping`]).\n /// Returns `(byte_start, byte_end_exclusive, total_original_size)` tuples.\n pub fn coalesce_spans(spans: &[FrameSpan], max_gap_bytes: u64) -> Vec<(u64, u64, u64)> {\n     let mut out: Vec<(u64, u64, u64)> = Vec::new();\n     for s in spans {\n         match out.last_mut() {\n             Some((_, end, orig)) if s.byte_start.saturating_sub(*end) <= max_gap_bytes => {\n                 *end = s.byte_end_exclusive;\n-                *orig += s.original_size;\n+                *orig *= /* ~ changed by cargo-mutants ~ */ s.original_size;\n             }\n             _ => out.push((s.byte_start, s.byte_end_exclusive, s.original_size)),\n         }\n     }\n     out\n }\n \n /// How much slack the bomb cap allows over the sidecar-claimed size\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "coalesce_spans",
+      "return_type": "-> Vec<(u64, u64, u64)>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 90
+        },
+        "start": {
+          "column": 1,
+          "line": 75
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:84:23: replace += with *= in coalesce_spans",
+    "package": "s4logs-core",
+    "replacement": "*=",
+    "span": {
+      "end": {
+        "column": 25,
+        "line": 84
+      },
+      "start": {
+        "column": 23,
+        "line": 84
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace << with >>\n@@ -87,17 +87,17 @@\n         }\n     }\n     out\n }\n \n /// How much slack the bomb cap allows over the sidecar-claimed size\n /// (mirrors s4 `cpu_zstd.rs`).\n pub const BOMB_SLACK_BYTES: u64 = 1024;\n-const BOOTSTRAP_CAPACITY: usize = 1 << 20;\n+const BOOTSTRAP_CAPACITY: usize = 1 >> /* ~ changed by cargo-mutants ~ */ 20;\n /// Hard ceiling on a single object's decompressed size (64 GiB). A claimed\n /// `expected_original` above this is treated as a hostile sidecar — real log\n /// objects are bounded by the drain `--chunk-target` (default 256 MiB).\n pub const MAX_DECOMPRESSED_BYTES: u64 = 64 << 30;\n \n /// Decompress one or more concatenated standard zstd frames, refusing to\n /// emit more than `expected_original + BOMB_SLACK_BYTES` bytes.\n ///\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": null,
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:95:37: replace << with >>",
+    "package": "s4logs-core",
+    "replacement": ">>",
+    "span": {
+      "end": {
+        "column": 39,
+        "line": 95
+      },
+      "start": {
+        "column": 37,
+        "line": 95
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace << with >>\n@@ -91,17 +91,17 @@\n \n /// How much slack the bomb cap allows over the sidecar-claimed size\n /// (mirrors s4 `cpu_zstd.rs`).\n pub const BOMB_SLACK_BYTES: u64 = 1024;\n const BOOTSTRAP_CAPACITY: usize = 1 << 20;\n /// Hard ceiling on a single object's decompressed size (64 GiB). A claimed\n /// `expected_original` above this is treated as a hostile sidecar — real log\n /// objects are bounded by the drain `--chunk-target` (default 256 MiB).\n-pub const MAX_DECOMPRESSED_BYTES: u64 = 64 << 30;\n+pub const MAX_DECOMPRESSED_BYTES: u64 = 64 >> /* ~ changed by cargo-mutants ~ */ 30;\n \n /// Decompress one or more concatenated standard zstd frames, refusing to\n /// emit more than `expected_original + BOMB_SLACK_BYTES` bytes.\n ///\n /// NOTE: when called on a *coalesced* span that includes skipped gap bytes,\n /// pass the summed `original_size` of the member frames — gap frames decode\n /// too (they are whole zstd frames), so prefer exact spans for grep and use\n /// coalescing only when the caller filters records afterwards anyway.\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": null,
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:99:44: replace << with >>",
+    "package": "s4logs-core",
+    "replacement": ">>",
+    "span": {
+      "end": {
+        "column": 46,
+        "line": 99
+      },
+      "start": {
+        "column": 44,
+        "line": 99
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace decompress_frames -> Result<Vec<u8>, ReadError> with Ok(vec![])\n@@ -104,36 +104,17 @@\n /// NOTE: when called on a *coalesced* span that includes skipped gap bytes,\n /// pass the summed `original_size` of the member frames — gap frames decode\n /// too (they are whole zstd frames), so prefer exact spans for grep and use\n /// coalescing only when the caller filters records afterwards anyway.\n pub fn decompress_frames(input: &[u8], expected_original: u64) -> Result<Vec<u8>, ReadError> {\n     // A forged sidecar/manifest can claim `expected_original` near u64::MAX;\n     // a plain `+` would panic in debug and wrap in release. Reject anything\n     // beyond a sane per-object ceiling before constructing the decoder.\n-    if expected_original > MAX_DECOMPRESSED_BYTES {\n-        return Err(ReadError::Bomb {\n-            cap: MAX_DECOMPRESSED_BYTES,\n-        });\n-    }\n-    let cap = expected_original.saturating_add(BOMB_SLACK_BYTES);\n-    let decoder = zstd::stream::read::Decoder::new(input)?;\n-    let mut limited = decoder.take(cap);\n-    let mut out = Vec::with_capacity((expected_original as usize).min(BOOTSTRAP_CAPACITY));\n-    limited.read_to_end(&mut out)?;\n-    if out.len() as u64 >= cap {\n-        return Err(ReadError::Bomb { cap });\n-    }\n-    if out.len() as u64 != expected_original {\n-        return Err(ReadError::SizeMismatch {\n-            expected: expected_original,\n-            got: out.len() as u64,\n-        });\n-    }\n-    Ok(out)\n+    Ok(vec![]) /* ~ changed by cargo-mutants ~ */\n }\n \n /// Streaming iterator over decompressed JSONL bytes: one [`LogRecord`] per\n /// non-empty line (grep/restore decode frame-by-frame and must not\n /// materialize a `Vec<LogRecord>` per multi-MiB frame). The final line may\n /// lack a trailing `\\n`; empty lines are skipped rather than treated as\n /// parse errors so `split`-style padding can't poison a frame.\n #[derive(Debug, Clone)]\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "decompress_frames",
+      "return_type": "-> Result<Vec<u8>, ReadError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 132
+        },
+        "start": {
+          "column": 1,
+          "line": 101
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:112:5: replace decompress_frames -> Result<Vec<u8>, ReadError> with Ok(vec![])",
+    "package": "s4logs-core",
+    "replacement": "Ok(vec![])",
+    "span": {
+      "end": {
+        "column": 12,
+        "line": 131
+      },
+      "start": {
+        "column": 5,
+        "line": 112
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace decompress_frames -> Result<Vec<u8>, ReadError> with Ok(vec![0])\n@@ -104,36 +104,17 @@\n /// NOTE: when called on a *coalesced* span that includes skipped gap bytes,\n /// pass the summed `original_size` of the member frames — gap frames decode\n /// too (they are whole zstd frames), so prefer exact spans for grep and use\n /// coalescing only when the caller filters records afterwards anyway.\n pub fn decompress_frames(input: &[u8], expected_original: u64) -> Result<Vec<u8>, ReadError> {\n     // A forged sidecar/manifest can claim `expected_original` near u64::MAX;\n     // a plain `+` would panic in debug and wrap in release. Reject anything\n     // beyond a sane per-object ceiling before constructing the decoder.\n-    if expected_original > MAX_DECOMPRESSED_BYTES {\n-        return Err(ReadError::Bomb {\n-            cap: MAX_DECOMPRESSED_BYTES,\n-        });\n-    }\n-    let cap = expected_original.saturating_add(BOMB_SLACK_BYTES);\n-    let decoder = zstd::stream::read::Decoder::new(input)?;\n-    let mut limited = decoder.take(cap);\n-    let mut out = Vec::with_capacity((expected_original as usize).min(BOOTSTRAP_CAPACITY));\n-    limited.read_to_end(&mut out)?;\n-    if out.len() as u64 >= cap {\n-        return Err(ReadError::Bomb { cap });\n-    }\n-    if out.len() as u64 != expected_original {\n-        return Err(ReadError::SizeMismatch {\n-            expected: expected_original,\n-            got: out.len() as u64,\n-        });\n-    }\n-    Ok(out)\n+    Ok(vec![0]) /* ~ changed by cargo-mutants ~ */\n }\n \n /// Streaming iterator over decompressed JSONL bytes: one [`LogRecord`] per\n /// non-empty line (grep/restore decode frame-by-frame and must not\n /// materialize a `Vec<LogRecord>` per multi-MiB frame). The final line may\n /// lack a trailing `\\n`; empty lines are skipped rather than treated as\n /// parse errors so `split`-style padding can't poison a frame.\n #[derive(Debug, Clone)]\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "decompress_frames",
+      "return_type": "-> Result<Vec<u8>, ReadError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 132
+        },
+        "start": {
+          "column": 1,
+          "line": 101
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:112:5: replace decompress_frames -> Result<Vec<u8>, ReadError> with Ok(vec![0])",
+    "package": "s4logs-core",
+    "replacement": "Ok(vec![0])",
+    "span": {
+      "end": {
+        "column": 12,
+        "line": 131
+      },
+      "start": {
+        "column": 5,
+        "line": 112
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace decompress_frames -> Result<Vec<u8>, ReadError> with Ok(vec![1])\n@@ -104,36 +104,17 @@\n /// NOTE: when called on a *coalesced* span that includes skipped gap bytes,\n /// pass the summed `original_size` of the member frames — gap frames decode\n /// too (they are whole zstd frames), so prefer exact spans for grep and use\n /// coalescing only when the caller filters records afterwards anyway.\n pub fn decompress_frames(input: &[u8], expected_original: u64) -> Result<Vec<u8>, ReadError> {\n     // A forged sidecar/manifest can claim `expected_original` near u64::MAX;\n     // a plain `+` would panic in debug and wrap in release. Reject anything\n     // beyond a sane per-object ceiling before constructing the decoder.\n-    if expected_original > MAX_DECOMPRESSED_BYTES {\n-        return Err(ReadError::Bomb {\n-            cap: MAX_DECOMPRESSED_BYTES,\n-        });\n-    }\n-    let cap = expected_original.saturating_add(BOMB_SLACK_BYTES);\n-    let decoder = zstd::stream::read::Decoder::new(input)?;\n-    let mut limited = decoder.take(cap);\n-    let mut out = Vec::with_capacity((expected_original as usize).min(BOOTSTRAP_CAPACITY));\n-    limited.read_to_end(&mut out)?;\n-    if out.len() as u64 >= cap {\n-        return Err(ReadError::Bomb { cap });\n-    }\n-    if out.len() as u64 != expected_original {\n-        return Err(ReadError::SizeMismatch {\n-            expected: expected_original,\n-            got: out.len() as u64,\n-        });\n-    }\n-    Ok(out)\n+    Ok(vec![1]) /* ~ changed by cargo-mutants ~ */\n }\n \n /// Streaming iterator over decompressed JSONL bytes: one [`LogRecord`] per\n /// non-empty line (grep/restore decode frame-by-frame and must not\n /// materialize a `Vec<LogRecord>` per multi-MiB frame). The final line may\n /// lack a trailing `\\n`; empty lines are skipped rather than treated as\n /// parse errors so `split`-style padding can't poison a frame.\n #[derive(Debug, Clone)]\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "decompress_frames",
+      "return_type": "-> Result<Vec<u8>, ReadError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 132
+        },
+        "start": {
+          "column": 1,
+          "line": 101
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:112:5: replace decompress_frames -> Result<Vec<u8>, ReadError> with Ok(vec![1])",
+    "package": "s4logs-core",
+    "replacement": "Ok(vec![1])",
+    "span": {
+      "end": {
+        "column": 12,
+        "line": 131
+      },
+      "start": {
+        "column": 5,
+        "line": 112
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace > with == in decompress_frames\n@@ -104,17 +104,17 @@\n /// NOTE: when called on a *coalesced* span that includes skipped gap bytes,\n /// pass the summed `original_size` of the member frames — gap frames decode\n /// too (they are whole zstd frames), so prefer exact spans for grep and use\n /// coalescing only when the caller filters records afterwards anyway.\n pub fn decompress_frames(input: &[u8], expected_original: u64) -> Result<Vec<u8>, ReadError> {\n     // A forged sidecar/manifest can claim `expected_original` near u64::MAX;\n     // a plain `+` would panic in debug and wrap in release. Reject anything\n     // beyond a sane per-object ceiling before constructing the decoder.\n-    if expected_original > MAX_DECOMPRESSED_BYTES {\n+    if expected_original == /* ~ changed by cargo-mutants ~ */ MAX_DECOMPRESSED_BYTES {\n         return Err(ReadError::Bomb {\n             cap: MAX_DECOMPRESSED_BYTES,\n         });\n     }\n     let cap = expected_original.saturating_add(BOMB_SLACK_BYTES);\n     let decoder = zstd::stream::read::Decoder::new(input)?;\n     let mut limited = decoder.take(cap);\n     let mut out = Vec::with_capacity((expected_original as usize).min(BOOTSTRAP_CAPACITY));\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "decompress_frames",
+      "return_type": "-> Result<Vec<u8>, ReadError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 132
+        },
+        "start": {
+          "column": 1,
+          "line": 101
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:112:26: replace > with == in decompress_frames",
+    "package": "s4logs-core",
+    "replacement": "==",
+    "span": {
+      "end": {
+        "column": 27,
+        "line": 112
+      },
+      "start": {
+        "column": 26,
+        "line": 112
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace > with < in decompress_frames\n@@ -104,17 +104,17 @@\n /// NOTE: when called on a *coalesced* span that includes skipped gap bytes,\n /// pass the summed `original_size` of the member frames — gap frames decode\n /// too (they are whole zstd frames), so prefer exact spans for grep and use\n /// coalescing only when the caller filters records afterwards anyway.\n pub fn decompress_frames(input: &[u8], expected_original: u64) -> Result<Vec<u8>, ReadError> {\n     // A forged sidecar/manifest can claim `expected_original` near u64::MAX;\n     // a plain `+` would panic in debug and wrap in release. Reject anything\n     // beyond a sane per-object ceiling before constructing the decoder.\n-    if expected_original > MAX_DECOMPRESSED_BYTES {\n+    if expected_original < /* ~ changed by cargo-mutants ~ */ MAX_DECOMPRESSED_BYTES {\n         return Err(ReadError::Bomb {\n             cap: MAX_DECOMPRESSED_BYTES,\n         });\n     }\n     let cap = expected_original.saturating_add(BOMB_SLACK_BYTES);\n     let decoder = zstd::stream::read::Decoder::new(input)?;\n     let mut limited = decoder.take(cap);\n     let mut out = Vec::with_capacity((expected_original as usize).min(BOOTSTRAP_CAPACITY));\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "decompress_frames",
+      "return_type": "-> Result<Vec<u8>, ReadError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 132
+        },
+        "start": {
+          "column": 1,
+          "line": 101
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:112:26: replace > with < in decompress_frames",
+    "package": "s4logs-core",
+    "replacement": "<",
+    "span": {
+      "end": {
+        "column": 27,
+        "line": 112
+      },
+      "start": {
+        "column": 26,
+        "line": 112
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace > with >= in decompress_frames\n@@ -104,17 +104,17 @@\n /// NOTE: when called on a *coalesced* span that includes skipped gap bytes,\n /// pass the summed `original_size` of the member frames — gap frames decode\n /// too (they are whole zstd frames), so prefer exact spans for grep and use\n /// coalescing only when the caller filters records afterwards anyway.\n pub fn decompress_frames(input: &[u8], expected_original: u64) -> Result<Vec<u8>, ReadError> {\n     // A forged sidecar/manifest can claim `expected_original` near u64::MAX;\n     // a plain `+` would panic in debug and wrap in release. Reject anything\n     // beyond a sane per-object ceiling before constructing the decoder.\n-    if expected_original > MAX_DECOMPRESSED_BYTES {\n+    if expected_original >= /* ~ changed by cargo-mutants ~ */ MAX_DECOMPRESSED_BYTES {\n         return Err(ReadError::Bomb {\n             cap: MAX_DECOMPRESSED_BYTES,\n         });\n     }\n     let cap = expected_original.saturating_add(BOMB_SLACK_BYTES);\n     let decoder = zstd::stream::read::Decoder::new(input)?;\n     let mut limited = decoder.take(cap);\n     let mut out = Vec::with_capacity((expected_original as usize).min(BOOTSTRAP_CAPACITY));\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "decompress_frames",
+      "return_type": "-> Result<Vec<u8>, ReadError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 132
+        },
+        "start": {
+          "column": 1,
+          "line": 101
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:112:26: replace > with >= in decompress_frames",
+    "package": "s4logs-core",
+    "replacement": ">=",
+    "span": {
+      "end": {
+        "column": 27,
+        "line": 112
+      },
+      "start": {
+        "column": 26,
+        "line": 112
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace >= with < in decompress_frames\n@@ -114,17 +114,17 @@\n             cap: MAX_DECOMPRESSED_BYTES,\n         });\n     }\n     let cap = expected_original.saturating_add(BOMB_SLACK_BYTES);\n     let decoder = zstd::stream::read::Decoder::new(input)?;\n     let mut limited = decoder.take(cap);\n     let mut out = Vec::with_capacity((expected_original as usize).min(BOOTSTRAP_CAPACITY));\n     limited.read_to_end(&mut out)?;\n-    if out.len() as u64 >= cap {\n+    if out.len() as u64 < /* ~ changed by cargo-mutants ~ */ cap {\n         return Err(ReadError::Bomb { cap });\n     }\n     if out.len() as u64 != expected_original {\n         return Err(ReadError::SizeMismatch {\n             expected: expected_original,\n             got: out.len() as u64,\n         });\n     }\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "decompress_frames",
+      "return_type": "-> Result<Vec<u8>, ReadError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 132
+        },
+        "start": {
+          "column": 1,
+          "line": 101
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:122:25: replace >= with < in decompress_frames",
+    "package": "s4logs-core",
+    "replacement": "<",
+    "span": {
+      "end": {
+        "column": 27,
+        "line": 122
+      },
+      "start": {
+        "column": 25,
+        "line": 122
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace != with == in decompress_frames\n@@ -117,17 +117,17 @@\n     let cap = expected_original.saturating_add(BOMB_SLACK_BYTES);\n     let decoder = zstd::stream::read::Decoder::new(input)?;\n     let mut limited = decoder.take(cap);\n     let mut out = Vec::with_capacity((expected_original as usize).min(BOOTSTRAP_CAPACITY));\n     limited.read_to_end(&mut out)?;\n     if out.len() as u64 >= cap {\n         return Err(ReadError::Bomb { cap });\n     }\n-    if out.len() as u64 != expected_original {\n+    if out.len() as u64 == /* ~ changed by cargo-mutants ~ */ expected_original {\n         return Err(ReadError::SizeMismatch {\n             expected: expected_original,\n             got: out.len() as u64,\n         });\n     }\n     Ok(out)\n }\n \n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "decompress_frames",
+      "return_type": "-> Result<Vec<u8>, ReadError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 132
+        },
+        "start": {
+          "column": 1,
+          "line": 101
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:125:25: replace != with == in decompress_frames",
+    "package": "s4logs-core",
+    "replacement": "==",
+    "span": {
+      "end": {
+        "column": 27,
+        "line": 125
+      },
+      "start": {
+        "column": 25,
+        "line": 125
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace <impl Iterator for RecordLines<'_>>::next -> Option<Self::Item> with None\n@@ -146,29 +146,17 @@\n         Self { rest: bytes }\n     }\n }\n \n impl Iterator for RecordLines<'_> {\n     type Item = Result<LogRecord, RecordError>;\n \n     fn next(&mut self) -> Option<Self::Item> {\n-        loop {\n-            if self.rest.is_empty() {\n-                return None;\n-            }\n-            let (line, rest) = match self.rest.iter().position(|&b| b == b'\\n') {\n-                Some(i) => (&self.rest[..i], &self.rest[i + 1..]),\n-                None => (self.rest, &self.rest[..0]),\n-            };\n-            self.rest = rest;\n-            if !line.is_empty() {\n-                return Some(LogRecord::from_jsonl(line));\n-            }\n-        }\n+        None /* ~ changed by cargo-mutants ~ */\n     }\n }\n \n #[cfg(test)]\n #[allow(clippy::unwrap_used)]\n mod tests {\n     use super::*;\n     use crate::chunk::{ChunkConfig, ChunkWriter};\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "<impl Iterator for RecordLines<'_>>::next",
+      "return_type": "-> Option<Self::Item>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 167
+        },
+        "start": {
+          "column": 5,
+          "line": 153
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:154:9: replace <impl Iterator for RecordLines<'_>>::next -> Option<Self::Item> with None",
+    "package": "s4logs-core",
+    "replacement": "None",
+    "span": {
+      "end": {
+        "column": 10,
+        "line": 166
+      },
+      "start": {
+        "column": 9,
+        "line": 154
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace <impl Iterator for RecordLines<'_>>::next -> Option<Self::Item> with Some(Default::default())\n@@ -146,29 +146,17 @@\n         Self { rest: bytes }\n     }\n }\n \n impl Iterator for RecordLines<'_> {\n     type Item = Result<LogRecord, RecordError>;\n \n     fn next(&mut self) -> Option<Self::Item> {\n-        loop {\n-            if self.rest.is_empty() {\n-                return None;\n-            }\n-            let (line, rest) = match self.rest.iter().position(|&b| b == b'\\n') {\n-                Some(i) => (&self.rest[..i], &self.rest[i + 1..]),\n-                None => (self.rest, &self.rest[..0]),\n-            };\n-            self.rest = rest;\n-            if !line.is_empty() {\n-                return Some(LogRecord::from_jsonl(line));\n-            }\n-        }\n+        Some(Default::default()) /* ~ changed by cargo-mutants ~ */\n     }\n }\n \n #[cfg(test)]\n #[allow(clippy::unwrap_used)]\n mod tests {\n     use super::*;\n     use crate::chunk::{ChunkConfig, ChunkWriter};\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "<impl Iterator for RecordLines<'_>>::next",
+      "return_type": "-> Option<Self::Item>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 167
+        },
+        "start": {
+          "column": 5,
+          "line": 153
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/s4logs-core/src/read.rs:154:9: replace <impl Iterator for RecordLines<'_>>::next -> Option<Self::Item> with Some(Default::default())",
+    "package": "s4logs-core",
+    "replacement": "Some(Default::default())",
+    "span": {
+      "end": {
+        "column": 10,
+        "line": 166
+      },
+      "start": {
+        "column": 9,
+        "line": 154
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace == with != in <impl Iterator for RecordLines<'_>>::next\n@@ -150,17 +150,17 @@\n impl Iterator for RecordLines<'_> {\n     type Item = Result<LogRecord, RecordError>;\n \n     fn next(&mut self) -> Option<Self::Item> {\n         loop {\n             if self.rest.is_empty() {\n                 return None;\n             }\n-            let (line, rest) = match self.rest.iter().position(|&b| b == b'\\n') {\n+            let (line, rest) = match self.rest.iter().position(|&b| b != /* ~ changed by cargo-mutants ~ */ b'\\n') {\n                 Some(i) => (&self.rest[..i], &self.rest[i + 1..]),\n                 None => (self.rest, &self.rest[..0]),\n             };\n             self.rest = rest;\n             if !line.is_empty() {\n                 return Some(LogRecord::from_jsonl(line));\n             }\n         }\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "<impl Iterator for RecordLines<'_>>::next",
+      "return_type": "-> Option<Self::Item>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 167
+        },
+        "start": {
+          "column": 5,
+          "line": 153
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:158:71: replace == with != in <impl Iterator for RecordLines<'_>>::next",
+    "package": "s4logs-core",
+    "replacement": "!=",
+    "span": {
+      "end": {
+        "column": 73,
+        "line": 158
+      },
+      "start": {
+        "column": 71,
+        "line": 158
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace + with - in <impl Iterator for RecordLines<'_>>::next\n@@ -151,17 +151,17 @@\n     type Item = Result<LogRecord, RecordError>;\n \n     fn next(&mut self) -> Option<Self::Item> {\n         loop {\n             if self.rest.is_empty() {\n                 return None;\n             }\n             let (line, rest) = match self.rest.iter().position(|&b| b == b'\\n') {\n-                Some(i) => (&self.rest[..i], &self.rest[i + 1..]),\n+                Some(i) => (&self.rest[..i], &self.rest[i - /* ~ changed by cargo-mutants ~ */ 1..]),\n                 None => (self.rest, &self.rest[..0]),\n             };\n             self.rest = rest;\n             if !line.is_empty() {\n                 return Some(LogRecord::from_jsonl(line));\n             }\n         }\n     }\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "<impl Iterator for RecordLines<'_>>::next",
+      "return_type": "-> Option<Self::Item>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 167
+        },
+        "start": {
+          "column": 5,
+          "line": 153
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:159:59: replace + with - in <impl Iterator for RecordLines<'_>>::next",
+    "package": "s4logs-core",
+    "replacement": "-",
+    "span": {
+      "end": {
+        "column": 60,
+        "line": 159
+      },
+      "start": {
+        "column": 59,
+        "line": 159
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ replace + with * in <impl Iterator for RecordLines<'_>>::next\n@@ -151,17 +151,17 @@\n     type Item = Result<LogRecord, RecordError>;\n \n     fn next(&mut self) -> Option<Self::Item> {\n         loop {\n             if self.rest.is_empty() {\n                 return None;\n             }\n             let (line, rest) = match self.rest.iter().position(|&b| b == b'\\n') {\n-                Some(i) => (&self.rest[..i], &self.rest[i + 1..]),\n+                Some(i) => (&self.rest[..i], &self.rest[i * /* ~ changed by cargo-mutants ~ */ 1..]),\n                 None => (self.rest, &self.rest[..0]),\n             };\n             self.rest = rest;\n             if !line.is_empty() {\n                 return Some(LogRecord::from_jsonl(line));\n             }\n         }\n     }\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "<impl Iterator for RecordLines<'_>>::next",
+      "return_type": "-> Option<Self::Item>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 167
+        },
+        "start": {
+          "column": 5,
+          "line": 153
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:159:59: replace + with * in <impl Iterator for RecordLines<'_>>::next",
+    "package": "s4logs-core",
+    "replacement": "*",
+    "span": {
+      "end": {
+        "column": 60,
+        "line": 159
+      },
+      "start": {
+        "column": 59,
+        "line": 159
+      }
+    }
+  },
+  {
+    "diff": "--- crates/s4logs-core/src/read.rs\n+++ delete ! in <impl Iterator for RecordLines<'_>>::next\n@@ -155,17 +155,17 @@\n             if self.rest.is_empty() {\n                 return None;\n             }\n             let (line, rest) = match self.rest.iter().position(|&b| b == b'\\n') {\n                 Some(i) => (&self.rest[..i], &self.rest[i + 1..]),\n                 None => (self.rest, &self.rest[..0]),\n             };\n             self.rest = rest;\n-            if !line.is_empty() {\n+            if  /* ~ changed by cargo-mutants ~ */line.is_empty() {\n                 return Some(LogRecord::from_jsonl(line));\n             }\n         }\n     }\n }\n \n #[cfg(test)]\n #[allow(clippy::unwrap_used)]\n",
+    "file": "crates/s4logs-core/src/read.rs",
+    "function": {
+      "function_name": "<impl Iterator for RecordLines<'_>>::next",
+      "return_type": "-> Option<Self::Item>",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 167
+        },
+        "start": {
+          "column": 5,
+          "line": 153
+        }
+      }
+    },
+    "genre": "UnaryOperator",
+    "name": "crates/s4logs-core/src/read.rs:163:16: delete ! in <impl Iterator for RecordLines<'_>>::next",
+    "package": "s4logs-core",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 17,
+        "line": 163
+      },
+      "start": {
+        "column": 16,
+        "line": 163
+      }
+    }
+  }
+]

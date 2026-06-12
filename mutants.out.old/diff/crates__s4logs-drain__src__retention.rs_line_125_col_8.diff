@@ -1,0 +1,21 @@
+--- crates/s4logs-drain/src/retention.rs
++++ delete ! in enforce_retention
+@@ -117,17 +117,17 @@
+ pub async fn enforce_retention(
+     cw: &dyn CwSource,
+     manifests: &dyn ManifestStore,
+     key_prefix: &str,
+     req: &RetentionRequest,
+     apply: bool,
+ ) -> Result<RetentionPlan, DrainError> {
+     let mut plan = plan_retention(manifests, key_prefix, req).await?;
+-    if !plan.allowed() {
++    if  /* ~ changed by cargo-mutants ~ */plan.allowed() {
+         tracing::warn!(
+             log_group = %req.log_group,
+             missing = plan.missing_windows.len(),
+             required = plan.required_windows.len(),
+             "retention gate refused: coverage gap (fail-closed, nothing changed)"
+         );
+         return Ok(plan);
+     }

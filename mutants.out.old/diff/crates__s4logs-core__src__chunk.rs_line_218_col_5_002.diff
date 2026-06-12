@@ -1,0 +1,26 @@
+--- crates/s4logs-core/src/chunk.rs
++++ replace compress_frame -> std::io::Result<Vec<u8>> with Ok(vec![1])
+@@ -210,22 +210,17 @@
+             crc32c: crc,
+             body,
+         }))
+     }
+ }
+ 
+ /// Compress one standalone standard zstd frame with content checksum.
+ fn compress_frame(input: &[u8], level: i32) -> std::io::Result<Vec<u8>> {
+-    let mut enc =
+-        zstd::stream::write::Encoder::new(Vec::with_capacity(input.len() / 4 + 64), level)?;
+-    enc.include_checksum(true)?;
+-    enc.set_pledged_src_size(Some(input.len() as u64))?;
+-    enc.write_all(input)?;
+-    enc.finish()
++    Ok(vec![1]) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[cfg(test)]
+ #[allow(clippy::unwrap_used)]
+ mod tests {
+     use super::*;
+ 
+     fn rec(ts: i64, msg: &str) -> LogRecord {

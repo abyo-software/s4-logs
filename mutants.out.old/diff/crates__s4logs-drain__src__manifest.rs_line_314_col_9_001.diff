@@ -1,0 +1,24 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace <impl ManifestStore for ObjectStoreManifestStore>::list -> Result<Vec<String>, ManifestError> with Ok(vec![String::new()])
+@@ -306,20 +306,17 @@
+         self.store
+             .put_bytes(key, body)
+             .await
+             .map(|_etag| ())
+             .map_err(|e| storage_err("put", key, e))
+     }
+ 
+     async fn list(&self, prefix: &str) -> Result<Vec<String>, ManifestError> {
+-        self.store
+-            .list_keys(prefix)
+-            .await
+-            .map_err(|e| storage_err("list", prefix, e))
++        Ok(vec![String::new()]) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[cfg(test)]
+ #[allow(clippy::unwrap_used)]
+ mod tests {
+     use super::*;
+     use s4logs_core::layout::manifest_key;

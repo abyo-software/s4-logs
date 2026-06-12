@@ -1,0 +1,25 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace <impl ManifestStore for ObjectStoreManifestStore>::get -> Result<Option<Bytes>, ManifestError> with Ok(None)
+@@ -290,21 +290,17 @@
+     async fn exists(&self, key: &str) -> Result<bool, ManifestError> {
+         self.store
+             .exists(key)
+             .await
+             .map_err(|e| storage_err("exists", key, e))
+     }
+ 
+     async fn get(&self, key: &str) -> Result<Option<Bytes>, ManifestError> {
+-        match self.store.get_bytes(key).await {
+-            Ok(b) => Ok(Some(b)),
+-            Err(StoreError::NotFound { .. }) => Ok(None),
+-            Err(e) => Err(storage_err("get", key, e)),
+-        }
++        Ok(None) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     async fn put(&self, key: &str, body: Bytes) -> Result<(), ManifestError> {
+         self.store
+             .put_bytes(key, body)
+             .await
+             .map(|_etag| ())
+             .map_err(|e| storage_err("put", key, e))

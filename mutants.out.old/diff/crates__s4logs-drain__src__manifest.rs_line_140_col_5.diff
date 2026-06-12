@@ -1,0 +1,29 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace manifest_covers_window -> bool with true
+@@ -132,25 +132,17 @@
+ /// object is never mistaken for proof of coverage (fail-closed).
+ pub fn manifest_covers_window(
+     bytes: &[u8],
+     account: &str,
+     log_group: &str,
+     window_start_ms: i64,
+     window_end_ms: i64,
+ ) -> bool {
+-    match Manifest::from_json_bytes(bytes) {
+-        Ok(m) => {
+-            m.account == account
+-                && m.log_group == log_group
+-                && m.window_start_ms == window_start_ms
+-                && m.window_end_ms == window_end_ms
+-        }
+-        Err(_) => false,
+-    }
++    true /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Parse the window out of a manifest key
+ /// (`…/window={start_ms}-{end_ms}.json`). Returns `None` for foreign keys.
+ /// Window timestamps are non-negative by construction ([`crate::window`]).
+ pub fn parse_manifest_key_window(key: &str) -> Option<Window> {
+     let base = key.rsplit('/').next()?;
+     let inner = base.strip_prefix("window=")?.strip_suffix(".json")?;

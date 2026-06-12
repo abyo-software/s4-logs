@@ -1,0 +1,21 @@
+--- crates/s4logs-core/src/tsindex.rs
++++ replace + with -
+@@ -11,17 +11,17 @@
+ //! S4IX itself is reused verbatim from s4-codec; S4LT deliberately lives in
+ //! a separate file so the S4IX format stays byte-identical to S4 proper.
+ 
+ use bytes::{Buf, BufMut, Bytes, BytesMut};
+ use thiserror::Error;
+ 
+ pub const TS_INDEX_MAGIC: &[u8; 4] = b"S4LT";
+ pub const TS_INDEX_VERSION: u32 = 1;
+-pub const TS_HEADER_BYTES: usize = 4 + 4 + 8;
++pub const TS_HEADER_BYTES: usize = 4 + 4 - /* ~ changed by cargo-mutants ~ */ 8;
+ pub const TS_ENTRY_BYTES: usize = 8 + 8;
+ /// Same hard cap as `s4_codec::index::MAX_FRAMES` — the two sidecars are
+ /// 1:1, so a count that S4IX would refuse is equally hostile here.
+ pub const MAX_FRAMES: u64 = 16 * 1024 * 1024;
+ 
+ /// Timestamp range (epoch ms, inclusive both ends) of one zstd frame.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub struct TsEntry {

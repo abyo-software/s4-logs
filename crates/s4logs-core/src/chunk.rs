@@ -267,6 +267,32 @@ mod tests {
     }
 
     #[test]
+    fn accessors_track_pushed_records() {
+        // is_empty / uncompressed_len / record_count drive the gateway's flush
+        // thresholds — a wrong accessor would break flush triggering. Pinned
+        // by mutation testing (these getters had surviving mutants).
+        let mut w = ChunkWriter::new(ChunkConfig {
+            frame_target_bytes: 8, // force a frame cut after the first push
+            zstd_level: 3,
+        });
+        assert!(w.is_empty());
+        assert_eq!(w.uncompressed_len(), 0);
+        assert_eq!(w.record_count(), 0);
+
+        w.push(&rec(1, "first-record-long-enough-to-cut")).unwrap();
+        // After a cut the bytes live in `original_off`; before, in `pending`.
+        // Either way the accessor must report the accumulated total > 0.
+        assert!(!w.is_empty());
+        assert!(w.uncompressed_len() > 0);
+        assert_eq!(w.record_count(), 1);
+
+        let before = w.uncompressed_len();
+        w.push(&rec(2, "second")).unwrap();
+        assert!(w.uncompressed_len() > before, "len must grow per push");
+        assert_eq!(w.record_count(), 2);
+    }
+
+    #[test]
     fn encode_does_not_consume_and_matches_finish() {
         let mut w = ChunkWriter::new(ChunkConfig::default());
         w.push(&rec(100, "hello")).unwrap();

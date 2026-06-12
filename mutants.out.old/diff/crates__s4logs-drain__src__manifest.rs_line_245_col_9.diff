@@ -1,0 +1,25 @@
+--- crates/s4logs-drain/src/manifest.rs
++++ replace <impl ManifestStore for MemoryManifestStore>::put -> Result<(), ManifestError> with Ok(())
+@@ -237,21 +237,17 @@
+             .objects
+             .lock()
+             .unwrap_or_else(|e| e.into_inner())
+             .get(key)
+             .cloned())
+     }
+ 
+     async fn put(&self, key: &str, body: Bytes) -> Result<(), ManifestError> {
+-        self.objects
+-            .lock()
+-            .unwrap_or_else(|e| e.into_inner())
+-            .insert(key.to_owned(), body);
+-        Ok(())
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     async fn list(&self, prefix: &str) -> Result<Vec<String>, ManifestError> {
+         Ok(self
+             .objects
+             .lock()
+             .unwrap_or_else(|e| e.into_inner())
+             .range(prefix.to_owned()..)
