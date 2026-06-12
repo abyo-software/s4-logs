@@ -356,6 +356,23 @@ such, not passed off as an organic workload):
 
 Total experiment cost: ~$2.60 (5 GiB × $0.50 ingest + cents of S3/Athena).
 
+### Mode B + restore against real AWS (2026-06-12)
+
+The gateway and restore paths — previously LocalStack-only — were validated
+against a real us-east-1 account (KB-scale, ~cents):
+
+| Step | Result |
+|---|---|
+| Gateway `/health` + `/ready` | 200; `/ready` succeeded against the real S3 `ListObjectsV2` probe |
+| `PutLogEvents` via the gateway (aws CLI, endpoint override) | events landed in real S3 under the correct `dt=` layout; objects decode with plain `zstd -dc` |
+| `both` routing | the routed event reached **real CloudWatch** (passthrough) **and** S3 |
+| `s3`-only routing | no log group was created in real CloudWatch (verified absent) — routing isolates correctly |
+| `grep` over the gateway-written archive | matched via real-S3 range reads (1 frame fetched, no full-object fallback) |
+| `restore --to-log-group` to real CW | 2 events re-ingested at current time with the `{original_timestamp, original_stream, message}` wrap — the 14-day-constraint design works live |
+| Graceful shutdown | flushed all buffers on SIGTERM |
+
+All resources were deleted afterward (bucket, log groups, IAM detached).
+
 ## No lock-in: your data is plain zstd
 
 **Format stability**: from v1.0 the on-disk formats — the standard-zstd data

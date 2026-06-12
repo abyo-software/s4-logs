@@ -7,15 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- **v1.0 format freeze is pending.** S4 Logs is pre-1.0; the on-disk
-  formats (the JSONL record schema, the S3 layout, the `S4LT` timestamp
-  sidecar, the manifest JSON shape) and the `s4-codec` S4IX index it reuses
-  are stable in practice but **not yet frozen**. v1.0 will declare the
-  SemVer-stable surface — the wire/disk formats above plus the `s4logs`
-  subcommand set and the workspace crate APIs — after which incompatible
-  changes ship in a v2.0.0. Until then, additive manifest fields keep the
-  byte-compat discipline (older manifests read as `None` for newly added
-  optional fields).
+### Added (v1.0 preparation)
+
+- **Format-freeze contract** ([DESIGN.md §14](DESIGN.md)) stating which
+  on-disk formats are stable for the 1.x series; surfaced in the README and
+  in code-doc markers on the format modules.
+- **Governance docs**: SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, and
+  this changelog.
+- **Supply-chain gate**: `deny.toml` + a `cargo deny check` CI job. The
+  rustls-webpki 0.101.7 advisories from the AWS SDK's legacy connector are
+  documented-and-ignored with justification (the active HTTPS client uses
+  the patched rustls 0.23 / webpki 0.103.13; the legacy connector is
+  compiled but never constructed).
+- **Mutation testing** (cargo-mutants) pass; closed the surfaced test gaps
+  in `TimeRange::overlaps`, `coalesce_spans`, the decompression bomb-cap
+  boundary, and the `ChunkWriter` accessors.
+
+### Verified
+
+- **Mode B (gateway) + restore validated against real AWS** (2026-06-12),
+  previously LocalStack-only: real-S3 buffering, `both`/`s3` routing
+  isolation, CloudWatch passthrough, real-S3 grep range reads, and
+  `restore --to-log-group` with the 14-day wrap.
+
+### Pending
+
+- **v1.0 format freeze.** S4 Logs is pre-1.0; the on-disk formats (the JSONL
+  record schema, the S3 layout, the `S4LT` timestamp sidecar, the manifest
+  JSON shape) and the `s4-codec` S4IX index it reuses are stable in practice
+  and now documented as frozen-for-1.x (DESIGN.md §14), but the **1.0 tag**
+  that declares the SemVer-stable surface — formats above plus the `s4logs`
+  subcommand set — has not been cut. Until then, additive manifest fields
+  keep the byte-compat discipline (older manifests read as `None` for newly
+  added optional fields).
 
 ## [0.4.3] — 2026-06-12
 
